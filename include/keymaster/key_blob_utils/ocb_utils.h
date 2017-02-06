@@ -26,7 +26,8 @@
 namespace keymaster {
 
 class AuthorizationSet;
-struct KeymasterKeyBlob;
+template<typename BlobType> struct TKeymasterBlob;
+typedef TKeymasterBlob<keymaster_key_blob_t> KeymasterKeyBlob;
 
 static const int OCB_NONCE_LENGTH = 12;
 static const int OCB_TAG_LENGTH = 16;

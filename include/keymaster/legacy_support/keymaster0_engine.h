@@ -29,7 +29,8 @@
 
 namespace keymaster {
 
-struct KeymasterKeyBlob;
+template<typename BlobType> struct TKeymasterBlob;
+typedef TKeymasterBlob<keymaster_key_blob_t> KeymasterKeyBlob;
 
 /* Keymaster0Engine is a BoringSSL ENGINE that implements RSA & EC by forwarding the requested
  * operations to a keymaster0 module. */

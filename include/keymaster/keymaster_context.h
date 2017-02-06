@@ -29,7 +29,8 @@ namespace keymaster {
 class AuthorizationSet;
 class KeyFactory;
 class OperationFactory;
-struct KeymasterKeyBlob;
+template<typename BlobType> struct TKeymasterBlob;
+typedef TKeymasterBlob<keymaster_key_blob_t> KeymasterKeyBlob;
 class Key;
 
 /**

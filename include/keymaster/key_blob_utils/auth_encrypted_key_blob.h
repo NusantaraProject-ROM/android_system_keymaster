@@ -23,7 +23,8 @@ namespace keymaster {
 
 class AuthorizationSet;
 class Buffer;
-struct KeymasterKeyBlob;
+template<typename BlobType> struct TKeymasterBlob;
+typedef TKeymasterBlob<keymaster_key_blob_t> KeymasterKeyBlob;
 
 keymaster_error_t SerializeAuthEncryptedBlob(const KeymasterKeyBlob& encrypted_key_material,
                                              const AuthorizationSet& hw_enforced,

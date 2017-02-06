@@ -25,7 +25,8 @@ namespace keymaster {
 class Key;
 class KeymasterContext;
 class OperationFactory;
-struct KeymasterKeyBlob;
+template<typename BlobType> struct TKeymasterBlob;
+typedef TKeymasterBlob<keymaster_key_blob_t> KeymasterKeyBlob;
 
 /**
  * KeyFactory is a abstraction that encapsulats the knowledge of how to build and parse a specifiec

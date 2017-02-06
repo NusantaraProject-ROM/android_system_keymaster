@@ -30,7 +30,8 @@
 
 namespace keymaster {
 
-struct KeymasterKeyBlob;
+template<typename BlobType> struct TKeymasterBlob;
+typedef TKeymasterBlob<keymaster_key_blob_t> KeymasterKeyBlob;
 
 class EvpMdCtxCleaner {
   public:
