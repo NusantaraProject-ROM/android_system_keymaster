@@ -159,7 +159,7 @@ static keymaster_error_t map_digests(keymaster1_device_t* dev, SoftKeymasterDevi
 }
 
 SoftKeymasterDevice::SoftKeymasterDevice()
-    : wrapped_km0_device_(nullptr), wrapped_km1_device_(nullptr),
+    : wrapped_km1_device_(nullptr),
       context_(new SoftKeymasterContext),
       impl_(new AndroidKeymaster(context_, kOperationTableSize)), configured_(false) {
     LOG_I("Creating device", 0);
@@ -170,7 +170,7 @@ SoftKeymasterDevice::SoftKeymasterDevice()
 }
 
 SoftKeymasterDevice::SoftKeymasterDevice(SoftKeymasterContext* context)
-    : wrapped_km0_device_(nullptr), wrapped_km1_device_(nullptr), context_(context),
+    : wrapped_km1_device_(nullptr), context_(context),
       impl_(new AndroidKeymaster(context_, kOperationTableSize)), configured_(false) {
     LOG_I("Creating test device", 0);
     LOG_D("Device address: %p", this);
@@ -203,7 +203,6 @@ keymaster_error_t SoftKeymasterDevice::SetHardwareDevice(keymaster0_device_t* ke
 
     km1_device_.common.module = &updated_module_;
 
-    wrapped_km0_device_ = keymaster0_device;
     wrapped_km1_device_ = nullptr;
     return KM_ERROR_OK;
 }
@@ -236,7 +235,6 @@ keymaster_error_t SoftKeymasterDevice::SetHardwareDevice(keymaster1_device_t* ke
 
     km1_device_.common.module = &updated_module_;
 
-    wrapped_km0_device_ = nullptr;
     wrapped_km1_device_ = keymaster1_device;
     return KM_ERROR_OK;
 }

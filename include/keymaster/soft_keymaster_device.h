@@ -239,7 +239,6 @@ class SoftKeymasterDevice {
     keymaster1_device_t km1_device_;
     keymaster2_device_t km2_device_;
 
-    keymaster0_device_t* wrapped_km0_device_;
     keymaster1_device_t* wrapped_km1_device_;
     DigestMap km1_device_digests_;
     SoftKeymasterContext* context_;
