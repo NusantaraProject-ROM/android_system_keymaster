@@ -255,6 +255,42 @@ cc_library_shared {
     export_include_dirs: ["include"],
 }
 
+cc_library_shared {
+    name: "libkeymaster3device",
+    srcs: [
+        "ng/AndroidKeymaster3Device.cpp",
+    ],
+    cflags: [
+        "-Wall",
+        "-Werror",
+        "-Wunused",
+    ],
+    clang: true,
+    clang_cflags: [
+        "-Wno-error=unused-const-variable",
+        "-Wno-error=unused-private-field",
+        // TODO(krasin): reenable coverage flags, when the new Clang toolchain is released.
+        // Currently, if enabled, these flags will cause an internal error in Clang.
+        "-fno-sanitize-coverage=edge,indirect-calls,8bit-counters,trace-cmp"
+    ],
+
+    shared_libs: [
+        "libkeymaster_messages",
+        "android.hardware.keymaster@3.0",
+        "libcrypto",
+        "libcutils",
+        "libhidlbase",
+        "libhidltransport",
+        "libkeymaster_portable",
+        "libkeymaster_staging",
+        "libpuresoftkeymasterdevice",
+        "liblog",
+        "libutils",
+    ],
+
+    export_include_dirs: ["include", "ng/include"],
+}
+
 // libkeymasterfiles is an empty library that exports all of the files in keymaster as includes.
 cc_library_static {
     name: "libkeymasterfiles",
