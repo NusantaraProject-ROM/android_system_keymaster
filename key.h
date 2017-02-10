@@ -17,15 +17,15 @@
 #ifndef SYSTEM_KEYMASTER_KEY_H_
 #define SYSTEM_KEYMASTER_KEY_H_
 
-#include <keymaster/UniquePtr.h>
+#include <assert.h>
 
 #include <hardware/keymaster_defs.h>
-
-#include <keymaster/android_keymaster_utils.h>
 #include <keymaster/authorization_set.h>
-#include <keymaster/keymaster_context.h>
+#include <keymaster/UniquePtr.h>
 
 namespace keymaster {
+
+class KeymasterContext;
 
 class Key {
   public:
@@ -52,7 +52,14 @@ class Key {
 
   protected:
     Key(const AuthorizationSet& hw_enforced, const AuthorizationSet& sw_enforced,
-        keymaster_error_t* error);
+        keymaster_error_t* error) {
+        assert(error);
+        authorizations_.push_back(hw_enforced);
+        authorizations_.push_back(sw_enforced);
+        *error = KM_ERROR_OK;
+        if (authorizations_.is_valid() != AuthorizationSet::OK)
+            *error = KM_ERROR_MEMORY_ALLOCATION_FAILED;
+    }
 
   private:
     AuthorizationSet authorizations_;

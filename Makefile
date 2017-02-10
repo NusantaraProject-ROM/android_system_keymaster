@@ -97,7 +97,6 @@ CPPSRCS=\
 	kdf1_test.cpp \
 	kdf2_test.cpp \
 	kdf_test.cpp \
-	key.cpp \
 	key_blob_test.cpp \
 	keymaster0_engine.cpp \
 	keymaster1_engine.cpp \
@@ -332,7 +331,6 @@ android_keymaster_test: android_keymaster_test.o \
 	hmac_key.o \
 	hmac_operation.o \
 	integrity_assured_key_blob.o \
-	key.o \
 	keymaster0_engine.o \
 	keymaster1_engine.o \
 	keymaster_enforcement.o \

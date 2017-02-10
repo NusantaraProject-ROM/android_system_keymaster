@@ -23,6 +23,9 @@
 #include <openssl/x509.h>
 #include <openssl/x509v3.h>
 
+#include <keymaster/android_keymaster_utils.h>
+#include <keymaster/keymaster_context.h>
+
 #include "attestation_record.h"
 #include "openssl_err.h"
 #include "openssl_utils.h"

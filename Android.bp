@@ -72,7 +72,6 @@ cc_library_shared {
         "ec_key_factory.cpp",
         "hmac_key.cpp",
         "hmac_operation.cpp",
-        "key.cpp",
         "keymaster_enforcement.cpp",
         "keymaster_tags.cpp",
         "logger.cpp",

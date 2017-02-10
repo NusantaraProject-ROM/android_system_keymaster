@@ -16,9 +16,9 @@
 
 #include "operation.h"
 
+#include <key.h>
 #include <keymaster/authorization_set.h>
 
-#include "key.h"
 
 namespace keymaster {
 
