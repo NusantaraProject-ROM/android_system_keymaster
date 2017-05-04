@@ -132,7 +132,7 @@ class KeymasterEnforcement {
      * need not have any relation to any external time standard (other than the duration of
      * "second").
      *
-     * On POSIX systems, it's recommented to use clock_gettime(CLOCK_MONOTONIC, ...) to implement
+     * On POSIX systems, it's recommended to use clock_gettime(CLOCK_MONOTONIC, ...) to implement
      * this method.
      */
     virtual uint32_t get_current_time() const = 0;

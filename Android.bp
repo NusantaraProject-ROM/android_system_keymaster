@@ -186,7 +186,6 @@ cc_library {
         "soft_keymaster_device.cpp",
         "soft_keymaster_logger.cpp",
     ],
-    include_dirs: ["system/security/keystore"],
     cflags: [
         "-Wall",
         "-Werror",
