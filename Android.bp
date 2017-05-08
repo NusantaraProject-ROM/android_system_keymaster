@@ -215,6 +215,46 @@ cc_library {
     export_include_dirs: ["include"],
 }
 
+cc_library_shared {
+    name: "libpuresoftkeymasterdevice",
+    vendor_available: true,
+    vndk: {
+        enabled: true,
+    },
+    srcs: [
+        "km_openssl/attestation_utils.cpp",
+        "android_keymaster/keymaster_configuration.cpp",
+        "contexts/soft_attestation_cert.cpp",
+        "contexts/pure_soft_keymaster_context.cpp",
+        "contexts/soft_keymaster_logger.cpp",
+        "km_openssl/soft_keymaster_enforcement.cpp",
+    ],
+    cflags: [
+        "-Wall",
+        "-Werror",
+        "-Wunused",
+    ],
+    clang: true,
+    clang_cflags: [
+        "-Wno-error=unused-const-variable",
+        "-Wno-error=unused-private-field",
+        // TODO(krasin): reenable coverage flags, when the new Clang toolchain is released.
+        // Currently, if enabled, these flags will cause an internal error in Clang.
+        "-fno-sanitize-coverage=edge,indirect-calls,8bit-counters,trace-cmp"
+    ],
+
+    shared_libs: [
+        "libkeymaster_messages",
+        "libkeymaster_portable",
+        "libkeymaster_staging",
+        "liblog",
+        "libcrypto",
+        "libcutils",
+    ],
+
+    export_include_dirs: ["include"],
+}
+
 // libkeymasterfiles is an empty library that exports all of the files in keymaster as includes.
 cc_library_static {
     name: "libkeymasterfiles",
