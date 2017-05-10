@@ -26,8 +26,7 @@
 #include <hardware/keymaster2.h>
 
 #include <keymaster/android_keymaster.h>
-#include <keymaster/soft_keymaster_context.h>
-
+#include <keymaster/contexts/soft_keymaster_context.h>
 #include <keymaster/UniquePtr.h>
 
 namespace keymaster {
