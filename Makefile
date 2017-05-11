@@ -103,6 +103,7 @@ CPPSRCS=\
 	android_keymaster/keymaster_configuration.cpp \
 	tests/keymaster_configuration_test.cpp \
 	android_keymaster/keymaster_enforcement.cpp \
+	km_openssl/soft_keymaster_enforcement.cpp \
 	tests/keymaster_enforcement_test.cpp \
 	android_keymaster/keymaster_tags.cpp \
 	android_keymaster/logger.cpp \
@@ -334,6 +335,7 @@ tests/android_keymaster_test: tests/android_keymaster_test.o \
 	legacy_support/keymaster0_engine.o \
 	legacy_support/keymaster1_engine.o \
 	android_keymaster/keymaster_enforcement.o \
+	km_openssl/soft_keymaster_enforcement.o \
 	android_keymaster/keymaster_tags.o \
 	android_keymaster/logger.o \
 	key_blob_utils/ocb.o \
@@ -362,6 +364,7 @@ tests/keymaster_enforcement_test: tests/keymaster_enforcement_test.o \
 	android_keymaster/android_keymaster_utils.o \
 	android_keymaster/authorization_set.o \
 	android_keymaster/keymaster_enforcement.o \
+	km_openssl/soft_keymaster_enforcement.o \
 	android_keymaster/keymaster_tags.o \
 	android_keymaster/logger.o \
 	android_keymaster/serializable.o \

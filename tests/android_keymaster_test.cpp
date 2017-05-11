@@ -28,6 +28,7 @@
 #include <keymaster/key_factory.h>
 #include <keymaster/km_openssl/hmac_key.h>
 #include <keymaster/km_openssl/openssl_utils.h>
+#include <keymaster/km_openssl/soft_keymaster_enforcement.h>
 #include <keymaster/legacy_support/keymaster0_engine.h>
 #include <keymaster/soft_keymaster_device.h>
 #include <keymaster/softkeymaster.h>
@@ -66,9 +67,9 @@ template <typename T> vector<T> make_vector(const T* array, size_t len) {
  * check cryptoperiods, but restrictive in the sense that the clock never advances (so rate-limited
  * keys will only work once).
  */
-class TestKeymasterEnforcement : public KeymasterEnforcement {
+class TestKeymasterEnforcement : public SoftKeymasterEnforcement {
   public:
-    TestKeymasterEnforcement() : KeymasterEnforcement(3, 3) {}
+    TestKeymasterEnforcement() : SoftKeymasterEnforcement(3, 3) {}
 
     virtual bool activation_date_valid(uint64_t /* activation_date */) const { return true; }
     virtual bool expiration_date_passed(uint64_t /* expiration_date */) const { return false; }

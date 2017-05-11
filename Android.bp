@@ -182,6 +182,7 @@ cc_library {
         "android_keymaster/keymaster_configuration.cpp",
         "contexts/soft_keymaster_context.cpp",
         "contexts/soft_keymaster_device.cpp",
+        "km_openssl/soft_keymaster_enforcement.cpp",
         "contexts/soft_keymaster_logger.cpp",
     ],
     cflags: [

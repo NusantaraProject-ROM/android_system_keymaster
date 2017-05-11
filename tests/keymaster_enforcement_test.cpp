@@ -20,17 +20,17 @@
 
 #include <keymaster/android_keymaster.h>
 #include <keymaster/authorization_set.h>
-#include <keymaster/keymaster_enforcement.h>
+#include <keymaster/km_openssl/soft_keymaster_enforcement.h>
 
 #include "android_keymaster_test_utils.h"
 
 namespace keymaster {
 namespace test {
 
-class TestKeymasterEnforcement : public KeymasterEnforcement {
+class TestKeymasterEnforcement : public SoftKeymasterEnforcement {
   public:
     TestKeymasterEnforcement()
-        : KeymasterEnforcement(3, 3), current_time_(10000), report_token_valid_(true) {}
+        : SoftKeymasterEnforcement(3, 3), current_time_(10000), report_token_valid_(true) {}
 
     keymaster_error_t AuthorizeOperation(const keymaster_purpose_t purpose, const km_id_t keyid,
                                          const AuthorizationSet& auth_set) {
@@ -864,7 +864,7 @@ TEST_F(KeymasterBaseTest, TestCreateKeyId) {
     keymaster_key_blob_t blob = {reinterpret_cast<const uint8_t*>("foobar"), 6};
 
     km_id_t key_id = 0;
-    EXPECT_TRUE(KeymasterEnforcement::CreateKeyId(blob, &key_id));
+    EXPECT_TRUE(kmen.CreateKeyId(blob, &key_id));
     EXPECT_NE(0U, key_id);
 }
 

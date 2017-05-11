@@ -386,34 +386,6 @@ keymaster_error_t KeymasterEnforcement::AuthorizeBegin(const keymaster_purpose_t
     return KM_ERROR_OK;
 }
 
-class EvpMdCtx {
-  public:
-    EvpMdCtx() { EVP_MD_CTX_init(&ctx_); }
-    ~EvpMdCtx() { EVP_MD_CTX_cleanup(&ctx_); }
-
-    EVP_MD_CTX* get() { return &ctx_; }
-
-  private:
-    EVP_MD_CTX ctx_;
-};
-
-/* static */
-bool KeymasterEnforcement::CreateKeyId(const keymaster_key_blob_t& key_blob, km_id_t* keyid) {
-    EvpMdCtx ctx;
-
-    uint8_t hash[EVP_MAX_MD_SIZE];
-    unsigned int hash_len;
-    if (EVP_DigestInit_ex(ctx.get(), EVP_sha256(), nullptr /* ENGINE */) &&
-        EVP_DigestUpdate(ctx.get(), key_blob.key_material, key_blob.key_material_size) &&
-        EVP_DigestFinal_ex(ctx.get(), hash, &hash_len)) {
-        assert(hash_len >= sizeof(*keyid));
-        memcpy(keyid, hash, sizeof(*keyid));
-        return true;
-    }
-
-    return false;
-}
-
 bool KeymasterEnforcement::MinTimeBetweenOpsPassed(uint32_t min_time_between, const km_id_t keyid) {
     if (!access_time_map_)
         return false;
