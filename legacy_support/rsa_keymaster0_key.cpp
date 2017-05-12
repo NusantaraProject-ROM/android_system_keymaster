@@ -29,9 +29,9 @@ using std::unique_ptr;
 
 namespace keymaster {
 
-RsaKeymaster0KeyFactory::RsaKeymaster0KeyFactory(const SoftKeymasterContext* context,
+RsaKeymaster0KeyFactory::RsaKeymaster0KeyFactory(const SoftwareKeyBlobMaker* blob_maker,
                                                  const Keymaster0Engine* engine)
-    : RsaKeyFactory(context), engine_(engine) {}
+    : RsaKeyFactory(blob_maker), engine_(engine) {}
 
 keymaster_error_t RsaKeymaster0KeyFactory::GenerateKey(const AuthorizationSet& key_description,
                                                        KeymasterKeyBlob* key_blob,
@@ -57,14 +57,14 @@ keymaster_error_t RsaKeymaster0KeyFactory::GenerateKey(const AuthorizationSet& k
         return KM_ERROR_UNKNOWN_ERROR;
 
     // These tags are hardware-enforced.  Putting them in the hw_enforced set here will ensure that
-    // context_->CreateKeyBlob doesn't put them in sw_enforced.
+    // blob_maker_->CreateKeyBlob doesn't put them in sw_enforced.
     hw_enforced->push_back(TAG_ALGORITHM, KM_ALGORITHM_RSA);
     hw_enforced->push_back(TAG_RSA_PUBLIC_EXPONENT, public_exponent);
     hw_enforced->push_back(TAG_KEY_SIZE, key_size);
     hw_enforced->push_back(TAG_ORIGIN, KM_ORIGIN_UNKNOWN);
 
-    return context_->CreateKeyBlob(key_description, KM_ORIGIN_UNKNOWN, key_material, key_blob,
-                                   hw_enforced, sw_enforced);
+    return blob_maker_.CreateKeyBlob(key_description, KM_ORIGIN_UNKNOWN, key_material, key_blob,
+                                     hw_enforced, sw_enforced);
 }
 
 keymaster_error_t RsaKeymaster0KeyFactory::ImportKey(
@@ -88,14 +88,14 @@ keymaster_error_t RsaKeymaster0KeyFactory::ImportKey(
         return KM_ERROR_UNKNOWN_ERROR;
 
     // These tags are hardware-enforced.  Putting them in the hw_enforced set here will ensure that
-    // context_->CreateKeyBlob doesn't put them in sw_enforced.
+    // blob_maker_->CreateKeyBlob doesn't put them in sw_enforced.
     hw_enforced->push_back(TAG_ALGORITHM, KM_ALGORITHM_RSA);
     hw_enforced->push_back(TAG_RSA_PUBLIC_EXPONENT, public_exponent);
     hw_enforced->push_back(TAG_KEY_SIZE, key_size);
     hw_enforced->push_back(TAG_ORIGIN, KM_ORIGIN_UNKNOWN);
 
-    return context_->CreateKeyBlob(authorizations, KM_ORIGIN_UNKNOWN, imported_hw_key,
-                                   output_key_blob, hw_enforced, sw_enforced);
+    return blob_maker_.CreateKeyBlob(authorizations, KM_ORIGIN_UNKNOWN, imported_hw_key,
+                                     output_key_blob, hw_enforced, sw_enforced);
 }
 
 keymaster_error_t RsaKeymaster0KeyFactory::LoadKey(const KeymasterKeyBlob& key_material,

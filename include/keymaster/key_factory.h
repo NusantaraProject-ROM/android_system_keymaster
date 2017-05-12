@@ -33,7 +33,6 @@ struct KeymasterKeyBlob;
  */
 class KeyFactory {
   public:
-    explicit KeyFactory(const KeymasterContext* context) : context_(context) {}
     virtual ~KeyFactory() {}
 
     // Factory methods.
@@ -59,9 +58,6 @@ class KeyFactory {
     // Informational methods.
     virtual const keymaster_key_format_t* SupportedImportFormats(size_t* format_count) const = 0;
     virtual const keymaster_key_format_t* SupportedExportFormats(size_t* format_count) const = 0;
-
-  protected:
-    const KeymasterContext* context_;
 };
 
 }  // namespace keymaster

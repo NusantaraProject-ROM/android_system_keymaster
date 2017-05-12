@@ -23,12 +23,12 @@
 #include "android_keymaster_test_utils.h"
 #include <keymaster/attestation_record.h>
 
-#include <keymaster/keymaster_context.h>
+#include <keymaster/soft_keymaster_context.h>
 
 namespace keymaster {
 namespace test {
 
-class TestContext : public KeymasterContext {
+class TestContext : public SoftKeymasterContext {
   public:
     keymaster_security_level_t GetSecurityLevel() const override {
         return KM_SECURITY_LEVEL_SOFTWARE;

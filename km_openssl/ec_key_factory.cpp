@@ -18,8 +18,6 @@
 
 #include <openssl/evp.h>
 
-#include <keymaster/keymaster_context.h>
-
 #include <keymaster/km_openssl/ec_key.h>
 #include <keymaster/km_openssl/ecdsa_operation.h>
 #include <keymaster/km_openssl/openssl_err.h>
@@ -122,8 +120,8 @@ keymaster_error_t EcKeyFactory::GenerateKey(const AuthorizationSet& key_descript
     if (error != KM_ERROR_OK)
         return error;
 
-    return context_->CreateKeyBlob(authorizations, KM_ORIGIN_GENERATED, key_material, key_blob,
-                                   hw_enforced, sw_enforced);
+    return blob_maker_.CreateKeyBlob(authorizations, KM_ORIGIN_GENERATED, key_material, key_blob,
+                                     hw_enforced, sw_enforced);
 }
 
 keymaster_error_t EcKeyFactory::ImportKey(const AuthorizationSet& key_description,
@@ -142,8 +140,8 @@ keymaster_error_t EcKeyFactory::ImportKey(const AuthorizationSet& key_descriptio
     if (error != KM_ERROR_OK)
         return error;
 
-    return context_->CreateKeyBlob(authorizations, KM_ORIGIN_IMPORTED, input_key_material,
-                                   output_key_blob, hw_enforced, sw_enforced);
+    return blob_maker_.CreateKeyBlob(authorizations, KM_ORIGIN_IMPORTED, input_key_material,
+                                     output_key_blob, hw_enforced, sw_enforced);
 }
 
 keymaster_error_t EcKeyFactory::UpdateImportKeyDescription(const AuthorizationSet& key_description,

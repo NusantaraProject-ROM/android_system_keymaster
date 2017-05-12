@@ -25,7 +25,6 @@
 namespace keymaster {
 
 class Keymaster0Engine;
-class SoftKeymasterContext;
 
 /**
  * An RsaKeyFactory which can delegate key generation, importing and loading operations to a
@@ -35,7 +34,8 @@ class RsaKeymaster0KeyFactory : public RsaKeyFactory {
     typedef RsaKeyFactory super;
 
   public:
-    RsaKeymaster0KeyFactory(const SoftKeymasterContext* context, const Keymaster0Engine* engine);
+    RsaKeymaster0KeyFactory(const SoftwareKeyBlobMaker* blob_maker,
+                            const Keymaster0Engine* engine);
 
     keymaster_error_t GenerateKey(const AuthorizationSet& key_description,
                                   KeymasterKeyBlob* key_blob, AuthorizationSet* hw_enforced,

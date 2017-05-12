@@ -21,12 +21,11 @@
 
 #include <keymaster/km_openssl/rsa_key.h>
 #include <keymaster/km_openssl/rsa_key_factory.h>
+#include <keymaster/operation.h>
 
 #include "keymaster1_engine.h"
 
 namespace keymaster {
-
-class SoftKeymasterContext;
 
 /**
  * RsaKeymaster1KeyFactory is a KeyFactory that creates and loads keys which are actually backed by
@@ -40,7 +39,8 @@ class SoftKeymasterContext;
  */
 class RsaKeymaster1KeyFactory : public RsaKeyFactory {
   public:
-    RsaKeymaster1KeyFactory(const SoftKeymasterContext* context, const Keymaster1Engine* engine);
+    RsaKeymaster1KeyFactory(const SoftwareKeyBlobMaker* blob_maker,
+                            const Keymaster1Engine* engine);
 
     keymaster_error_t GenerateKey(const AuthorizationSet& key_description,
                                   KeymasterKeyBlob* key_blob, AuthorizationSet* hw_enforced,

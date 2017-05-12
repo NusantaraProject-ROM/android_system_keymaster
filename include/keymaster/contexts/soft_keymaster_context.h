@@ -25,6 +25,7 @@
 #include <hardware/keymaster0.h>
 #include <hardware/keymaster1.h>
 #include <keymaster/keymaster_context.h>
+#include <keymaster/soft_key_factory.h>
 
 namespace keymaster {
 
@@ -35,7 +36,7 @@ class Keymaster1Engine;
 /**
  * SoftKeymasterContext provides the context for a non-secure implementation of AndroidKeymaster.
  */
-class SoftKeymasterContext : public KeymasterContext {
+class SoftKeymasterContext: public KeymasterContext, SoftwareKeyBlobMaker {
   public:
     explicit SoftKeymasterContext(const std::string& root_of_trust = "SW");
     ~SoftKeymasterContext() override;
@@ -64,10 +65,6 @@ class SoftKeymasterContext : public KeymasterContext {
     OperationFactory* GetOperationFactory(keymaster_algorithm_t algorithm,
                                           keymaster_purpose_t purpose) const override;
     keymaster_algorithm_t* GetSupportedAlgorithms(size_t* algorithms_count) const override;
-    keymaster_error_t CreateKeyBlob(const AuthorizationSet& auths, keymaster_key_origin_t origin,
-                                    const KeymasterKeyBlob& key_material, KeymasterKeyBlob* blob,
-                                    AuthorizationSet* hw_enforced,
-                                    AuthorizationSet* sw_enforced) const override;
     keymaster_error_t UpgradeKeyBlob(const KeymasterKeyBlob& key_to_upgrade,
                                      const AuthorizationSet& upgrade_params,
                                      KeymasterKeyBlob* upgraded_key) const override;
@@ -94,6 +91,14 @@ class SoftKeymasterContext : public KeymasterContext {
     }
 
     void AddSystemVersionToSet(AuthorizationSet* auth_set) const;
+    /*********************************************************************************************
+     * Implement SoftwareKeyBlobMaker
+     */
+    keymaster_error_t CreateKeyBlob(const AuthorizationSet& auths, keymaster_key_origin_t origin,
+                                    const KeymasterKeyBlob& key_material, KeymasterKeyBlob* blob,
+                                    AuthorizationSet* hw_enforced,
+                                    AuthorizationSet* sw_enforced) const override;
+    /*********************************************************************************************/
 
   private:
     keymaster_error_t ParseOldSoftkeymasterBlob(const KeymasterKeyBlob& blob,

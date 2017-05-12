@@ -27,7 +27,9 @@ const size_t kMaxHmacKeyLengthBits = 2048;  // Some RFC test cases require >1024
 
 class HmacKeyFactory : public SymmetricKeyFactory {
   public:
-    explicit HmacKeyFactory(const KeymasterContext* context) : SymmetricKeyFactory(context) {}
+    explicit HmacKeyFactory(const SoftwareKeyBlobMaker* blob_maker,
+                            const KeymasterContext* context) :
+                                    SymmetricKeyFactory(blob_maker, context) {}
 
     keymaster_error_t LoadKey(const KeymasterKeyBlob& key_material,
                               const AuthorizationSet& additional_params,

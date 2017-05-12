@@ -96,8 +96,8 @@ keymaster_error_t RsaKeyFactory::GenerateKey(const AuthorizationSet& key_descrip
     if (error != KM_ERROR_OK)
         return error;
 
-    return context_->CreateKeyBlob(authorizations, KM_ORIGIN_GENERATED, key_material, key_blob,
-                                   hw_enforced, sw_enforced);
+    return blob_maker_.CreateKeyBlob(authorizations, KM_ORIGIN_GENERATED, key_material, key_blob,
+                                     hw_enforced, sw_enforced);
 }
 
 keymaster_error_t RsaKeyFactory::ImportKey(const AuthorizationSet& key_description,
@@ -117,8 +117,8 @@ keymaster_error_t RsaKeyFactory::ImportKey(const AuthorizationSet& key_descripti
                                    &authorizations, &public_exponent, &key_size);
     if (error != KM_ERROR_OK)
         return error;
-    return context_->CreateKeyBlob(authorizations, KM_ORIGIN_IMPORTED, input_key_material,
-                                   output_key_blob, hw_enforced, sw_enforced);
+    return blob_maker_.CreateKeyBlob(authorizations, KM_ORIGIN_IMPORTED, input_key_material,
+                                     output_key_blob, hw_enforced, sw_enforced);
 }
 
 keymaster_error_t RsaKeyFactory::UpdateImportKeyDescription(const AuthorizationSet& key_description,

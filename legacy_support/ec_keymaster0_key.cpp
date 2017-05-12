@@ -29,9 +29,9 @@ using std::unique_ptr;
 
 namespace keymaster {
 
-EcdsaKeymaster0KeyFactory::EcdsaKeymaster0KeyFactory(const SoftKeymasterContext* context,
+EcdsaKeymaster0KeyFactory::EcdsaKeymaster0KeyFactory(const SoftwareKeyBlobMaker* blob_maker,
                                                      const Keymaster0Engine* engine)
-    : EcKeyFactory(context), engine_(engine) {}
+    : EcKeyFactory(blob_maker), engine_(engine) {}
 
 keymaster_error_t EcdsaKeymaster0KeyFactory::GenerateKey(const AuthorizationSet& key_description,
                                                          KeymasterKeyBlob* key_blob,
@@ -55,14 +55,14 @@ keymaster_error_t EcdsaKeymaster0KeyFactory::GenerateKey(const AuthorizationSet&
         return KM_ERROR_UNKNOWN_ERROR;
 
     // These tags are hardware-enforced.  Putting them in the hw_enforced set here will ensure that
-    // context_->CreateKeyBlob doesn't put them in sw_enforced.
+    // blob_maker_->CreateKeyBlob doesn't put them in sw_enforced.
     hw_enforced->push_back(TAG_ALGORITHM, KM_ALGORITHM_EC);
     hw_enforced->push_back(TAG_KEY_SIZE, key_size);
     hw_enforced->push_back(TAG_EC_CURVE, ec_curve);
     hw_enforced->push_back(TAG_ORIGIN, KM_ORIGIN_UNKNOWN);
 
-    return context_->CreateKeyBlob(key_description, KM_ORIGIN_UNKNOWN, key_material, key_blob,
-                                   hw_enforced, sw_enforced);
+    return blob_maker_.CreateKeyBlob(key_description, KM_ORIGIN_UNKNOWN, key_material, key_blob,
+                                     hw_enforced, sw_enforced);
 }
 
 keymaster_error_t EcdsaKeymaster0KeyFactory::ImportKey(
@@ -88,13 +88,13 @@ keymaster_error_t EcdsaKeymaster0KeyFactory::ImportKey(
         return KM_ERROR_UNKNOWN_ERROR;
 
     // These tags are hardware-enforced.  Putting them in the hw_enforced set here will ensure that
-    // context_->CreateKeyBlob doesn't put them in sw_enforced.
+    // blob_maker_->CreateKeyBlob doesn't put them in sw_enforced.
     hw_enforced->push_back(TAG_ALGORITHM, KM_ALGORITHM_EC);
     hw_enforced->push_back(TAG_KEY_SIZE, key_size);
     hw_enforced->push_back(TAG_ORIGIN, KM_ORIGIN_UNKNOWN);
 
-    return context_->CreateKeyBlob(authorizations, KM_ORIGIN_UNKNOWN, imported_hw_key,
-                                   output_key_blob, hw_enforced, sw_enforced);
+    return blob_maker_.CreateKeyBlob(authorizations, KM_ORIGIN_UNKNOWN, imported_hw_key,
+                                     output_key_blob, hw_enforced, sw_enforced);
 }
 
 keymaster_error_t EcdsaKeymaster0KeyFactory::LoadKey(const KeymasterKeyBlob& key_material,

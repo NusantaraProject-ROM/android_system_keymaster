@@ -93,20 +93,6 @@ class KeymasterContext {
     virtual keymaster_algorithm_t* GetSupportedAlgorithms(size_t* algorithms_count) const = 0;
 
     /**
-     * CreateKeyBlob takes authorization sets and key material and produces a key blob and hardware
-     * and software authorization lists ready to be returned to the AndroidKeymaster client
-     * (Keystore, generally).  The blob is integrity-checked and may be encrypted, depending on the
-     * needs of the context.
-    *
-     * This method is generally called only by KeyFactory subclassses.
-     */
-    virtual keymaster_error_t CreateKeyBlob(const AuthorizationSet& key_description,
-                                            keymaster_key_origin_t origin,
-                                            const KeymasterKeyBlob& key_material,
-                                            KeymasterKeyBlob* blob, AuthorizationSet* hw_enforced,
-                                            AuthorizationSet* sw_enforced) const = 0;
-
-    /**
      * UpgradeKeyBlob takes an existing blob, parses out key material and constructs a new blob with
      * the current format and OS version info.
      */

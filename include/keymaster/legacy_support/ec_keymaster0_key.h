@@ -25,7 +25,6 @@
 namespace keymaster {
 
 class Keymaster0Engine;
-class SoftKeymasterContext;
 
 /**
  * An EcdsaKeyFactory which can delegate key generation, importing and loading operations to a
@@ -35,7 +34,8 @@ class EcdsaKeymaster0KeyFactory : public EcKeyFactory {
     typedef EcKeyFactory super;
 
   public:
-    EcdsaKeymaster0KeyFactory(const SoftKeymasterContext* context, const Keymaster0Engine* engine);
+    EcdsaKeymaster0KeyFactory(const SoftwareKeyBlobMaker* blob_maker,
+                              const Keymaster0Engine* engine);
 
     keymaster_error_t GenerateKey(const AuthorizationSet& key_description,
                                   KeymasterKeyBlob* key_blob, AuthorizationSet* hw_enforced,

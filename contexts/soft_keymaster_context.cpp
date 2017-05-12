@@ -309,7 +309,7 @@ bool UpgradeIntegerTag(keymaster_tag_t tag, uint32_t value, AuthorizationSet* se
 
 SoftKeymasterContext::SoftKeymasterContext(const std::string& root_of_trust)
     : rsa_factory_(new RsaKeyFactory(this)), ec_factory_(new EcKeyFactory(this)),
-      aes_factory_(new AesKeyFactory(this)), hmac_factory_(new HmacKeyFactory(this)),
+      aes_factory_(new AesKeyFactory(this, this)), hmac_factory_(new HmacKeyFactory(this, this)),
       km1_dev_(nullptr), root_of_trust_(root_of_trust), os_version_(0), os_patchlevel_(0) {}
 
 SoftKeymasterContext::~SoftKeymasterContext() {}

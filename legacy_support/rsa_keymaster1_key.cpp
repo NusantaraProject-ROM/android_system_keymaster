@@ -20,15 +20,16 @@
 #include <memory>
 
 #include <keymaster/logger.h>
+
 #include "rsa_keymaster1_operation.h"
 
 using std::unique_ptr;
 
 namespace keymaster {
 
-RsaKeymaster1KeyFactory::RsaKeymaster1KeyFactory(const SoftKeymasterContext* context,
+RsaKeymaster1KeyFactory::RsaKeymaster1KeyFactory(const SoftwareKeyBlobMaker* blob_maker,
                                                  const Keymaster1Engine* engine)
-    : RsaKeyFactory(context), engine_(engine),
+    : RsaKeyFactory(blob_maker), engine_(engine),
       sign_factory_(new RsaKeymaster1OperationFactory(KM_PURPOSE_SIGN, engine)),
       decrypt_factory_(new RsaKeymaster1OperationFactory(KM_PURPOSE_DECRYPT, engine)),
       // For pubkey ops we can use the normal operation factories.

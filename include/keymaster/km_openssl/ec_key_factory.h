@@ -21,12 +21,14 @@
 #include <openssl/evp.h>
 
 #include <keymaster/asymmetric_key_factory.h>
+#include <keymaster/soft_key_factory.h>
 
 namespace keymaster {
 
-class EcKeyFactory : public AsymmetricKeyFactory {
+class EcKeyFactory : public AsymmetricKeyFactory, public SoftKeyFactoryMixin {
   public:
-    explicit EcKeyFactory(const KeymasterContext* context) : AsymmetricKeyFactory(context) {}
+    explicit EcKeyFactory(const SoftwareKeyBlobMaker* blob_maker) :
+                          SoftKeyFactoryMixin(blob_maker) {}
 
     keymaster_algorithm_t keymaster_key_type() const override { return KM_ALGORITHM_EC; }
     int evp_key_type() const override { return EVP_PKEY_EC; }

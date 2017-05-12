@@ -18,6 +18,7 @@
 #define SYSTEM_KEYMASTER_SYMMETRIC_KEY_H_
 
 #include <keymaster/key_factory.h>
+#include <keymaster/soft_key_factory.h>
 
 #include <keymaster/key.h>
 
@@ -25,9 +26,12 @@ namespace keymaster {
 
 class SymmetricKey;
 
-class SymmetricKeyFactory : public KeyFactory {
+class SymmetricKeyFactory : public KeyFactory, public SoftKeyFactoryMixin {
   public:
-    explicit SymmetricKeyFactory(const KeymasterContext* context) : KeyFactory(context) {}
+    explicit SymmetricKeyFactory(const SoftwareKeyBlobMaker* blob_maker,
+                                 const KeymasterContext* context) :
+            SoftKeyFactoryMixin(blob_maker),
+            context_(*context) {}
 
     keymaster_error_t GenerateKey(const AuthorizationSet& key_description,
                                   KeymasterKeyBlob* key_blob, AuthorizationSet* hw_enforced,
@@ -52,6 +56,7 @@ class SymmetricKeyFactory : public KeyFactory {
         *format_count = 0;
         return NULL;
     }
+    const KeymasterContext& context_;
 };
 
 class SymmetricKey : public Key {

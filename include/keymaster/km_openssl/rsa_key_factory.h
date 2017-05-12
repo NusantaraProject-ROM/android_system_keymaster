@@ -21,12 +21,14 @@
 #include <openssl/rsa.h>
 
 #include <keymaster/asymmetric_key_factory.h>
+#include <keymaster/soft_key_factory.h>
 
 namespace keymaster {
 
-class RsaKeyFactory : public AsymmetricKeyFactory {
+class RsaKeyFactory : public AsymmetricKeyFactory, public SoftKeyFactoryMixin {
   public:
-    explicit RsaKeyFactory(const KeymasterContext* context) : AsymmetricKeyFactory(context) {}
+    explicit RsaKeyFactory(const SoftwareKeyBlobMaker* blob_maker) :
+            SoftKeyFactoryMixin(blob_maker) {}
 
     keymaster_error_t GenerateKey(const AuthorizationSet& key_description,
                                   KeymasterKeyBlob* key_blob, AuthorizationSet* hw_enforced,
