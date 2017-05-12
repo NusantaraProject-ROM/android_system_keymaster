@@ -330,6 +330,8 @@ struct CertificateChainDelete {
     }
 };
 
+typedef UniquePtr<keymaster_cert_chain_t, CertificateChainDelete> CertChainPtr;
+
 keymaster_error_t EcKeySizeToCurve(uint32_t key_size_bits, keymaster_ec_curve_t* curve);
 keymaster_error_t EcCurveToKeySize(keymaster_ec_curve_t curve, uint32_t* key_size_bits);
 

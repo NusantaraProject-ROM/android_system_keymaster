@@ -19,11 +19,10 @@
 
 #include <assert.h>
 
-#include <openssl/evp.h>
-
 #include <hardware/keymaster_defs.h>
 #include <keymaster/keymaster_enforcement.h>
 #include <keymaster/random_source.h>
+#include <keymaster/android_keymaster_utils.h>
 
 namespace keymaster {
 
@@ -31,6 +30,7 @@ class AuthorizationSet;
 class KeyFactory;
 class OperationFactory;
 struct KeymasterKeyBlob;
+class Key;
 
 /**
  * KeymasterContext provides a singleton abstract interface that encapsulates various
@@ -65,11 +65,6 @@ class KeymasterContext : public virtual RandomSource {
   public:
     KeymasterContext() {}
     virtual ~KeymasterContext(){};
-
-    /**
-     * Returns the security level (SW or TEE) of this keymaster implementation.
-     */
-    virtual keymaster_security_level_t GetSecurityLevel() const = 0;
 
     /**
      * Sets the system version as reported by the system *itself*.  This is used to verify that the
@@ -141,54 +136,11 @@ class KeymasterContext : public virtual RandomSource {
      */
     virtual KeymasterEnforcement* enforcement_policy() = 0;
 
-    /**
-     * Return the attestation signing key of the specified algorithm (KM_ALGORITHM_RSA or
-     * KM_ALGORITHM_EC).  Caller acquires ownership and should free using EVP_PKEY_free.
-     */
-    virtual EVP_PKEY* AttestationKey(keymaster_algorithm_t algorithm,
-                                     keymaster_error_t* error) const = 0;
-
-    /**
-     * Return the certificate chain of the attestation signing key of the specified algorithm
-     * (KM_ALGORITHM_RSA or KM_ALGORITHM_EC).  Caller acquires ownership and should free.
-     */
-    virtual keymaster_cert_chain_t* AttestationChain(keymaster_algorithm_t algorithm,
-                                                     keymaster_error_t* error) const = 0;
-
-    /**
-     * Generate the current unique ID.
-     */
-    virtual keymaster_error_t GenerateUniqueId(uint64_t creation_date_time,
-                                               const keymaster_blob_t& application_id,
-                                               bool reset_since_rotation,
-                                               Buffer* unique_id) const = 0;
-
-    /**
-     * Verify that the device IDs provided in the attestation_params match the device's actual IDs
-     * and copy them to attestation. If *any* of the IDs do not match or verification is not
-     * possible, return KM_ERROR_CANNOT_ATTEST_IDS. If *all* IDs provided are successfully verified
-     * or no IDs were provided, return KM_ERROR_OK.
-     *
-     * If you do not support device ID attestation, ignore all arguments and return
-     * KM_ERROR_UNIMPLEMENTED.
-     */
-    virtual keymaster_error_t VerifyAndCopyDeviceIds(
-        const AuthorizationSet& /* attestation_params */,
-        AuthorizationSet* /* attestation */) const {
-        return KM_ERROR_UNIMPLEMENTED;
-    }
-
-    /**
-     * Returns verified boot parameters for the Attestation Extension.  For hardware-based
-     * implementations, these will be the values reported by the bootloader. By default,  verified
-     * boot state is unknown, and KM_ERROR_UNIMPLEMENTED is returned.
-     */
-    virtual keymaster_error_t
-    GetVerifiedBootParams(keymaster_blob_t* /* verified_boot_key */,
-                          keymaster_verified_boot_t* /* verified_boot_state */,
-                          bool* /* device_locked */) const {
-        return KM_ERROR_UNIMPLEMENTED;
-    }
+    virtual keymaster_error_t GenerateAttestation(const Key& key,
+                                                  const AuthorizationSet& attest_params,
+                                                  const AuthorizationSet& tee_enforced,
+                                                  const AuthorizationSet& sw_enforced,
+                                                  CertChainPtr* cert_chain) const = 0;
 
   private:
     // Uncopyable.

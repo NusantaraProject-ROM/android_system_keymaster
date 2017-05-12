@@ -23,68 +23,13 @@
 #include "android_keymaster_test_utils.h"
 #include <keymaster/attestation_record.h>
 
-#include <keymaster/soft_keymaster_context.h>
-
 namespace keymaster {
 namespace test {
 
-class TestContext : public SoftKeymasterContext {
+class TestContext : public AttestationRecordContext {
   public:
     keymaster_security_level_t GetSecurityLevel() const override {
         return KM_SECURITY_LEVEL_SOFTWARE;
-    }
-    keymaster_error_t SetSystemVersion(uint32_t /* os_version */,
-                                       uint32_t /* os_patchlevel */) override {
-        return KM_ERROR_UNIMPLEMENTED;
-    }
-    void GetSystemVersion(uint32_t* os_version, uint32_t* os_patchlevel) const override {
-        *os_version = 0;
-        *os_patchlevel = 0;
-    }
-    KeyFactory* GetKeyFactory(keymaster_algorithm_t /* algorithm */) const override {
-        return nullptr;
-    }
-    OperationFactory* GetOperationFactory(keymaster_algorithm_t /* algorithm */,
-                                          keymaster_purpose_t /* purpose */) const override {
-        return nullptr;
-    }
-    keymaster_algorithm_t* GetSupportedAlgorithms(size_t* /* algorithms_count */) const override {
-        return nullptr;
-    }
-    keymaster_error_t CreateKeyBlob(const AuthorizationSet& /* key_description */,
-                                    keymaster_key_origin_t /* origin */,
-                                    const KeymasterKeyBlob& /* key_material */,
-                                    KeymasterKeyBlob* /* blob */,
-                                    AuthorizationSet* /* hw_enforced */,
-                                    AuthorizationSet* /* sw_enforced */) const override {
-        return KM_ERROR_UNIMPLEMENTED;
-    }
-    keymaster_error_t UpgradeKeyBlob(const KeymasterKeyBlob& /* key_to_upgrade */,
-                                     const AuthorizationSet& /* upgrade_params */,
-                                     KeymasterKeyBlob* /* upgraded_key */) const override {
-        return KM_ERROR_UNIMPLEMENTED;
-    }
-    keymaster_error_t ParseKeyBlob(const KeymasterKeyBlob& /* blob */,
-                                   const AuthorizationSet& /* additional_params */,
-                                   KeymasterKeyBlob* /* key_material */,
-                                   AuthorizationSet* /* hw_enforced */,
-                                   AuthorizationSet* /* sw_enforced */) const override {
-        return KM_ERROR_UNIMPLEMENTED;
-    }
-    keymaster_error_t AddRngEntropy(const uint8_t* /* buf */, size_t /* length */) const override {
-        return KM_ERROR_UNIMPLEMENTED;
-    }
-    keymaster_error_t GenerateRandom(uint8_t* /* buf */, size_t /* length */) const override {
-        return KM_ERROR_UNIMPLEMENTED;
-    }
-    KeymasterEnforcement* enforcement_policy() override { return nullptr; }
-    EVP_PKEY* AttestationKey(keymaster_algorithm_t /* algorithm */,
-                             keymaster_error_t* /* error */) const override {
-        return nullptr;
-    }
-    keymaster_cert_chain_t* AttestationChain(keymaster_algorithm_t /* algorithm */,
-                                             keymaster_error_t* /* error */) const override {
-        return nullptr;
     }
     keymaster_error_t GenerateUniqueId(uint64_t /* creation_date_time */,
                                        const keymaster_blob_t& /* application_id */,

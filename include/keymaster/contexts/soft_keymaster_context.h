@@ -25,6 +25,7 @@
 #include <hardware/keymaster0.h>
 #include <hardware/keymaster1.h>
 
+#include <keymaster/attestation_record.h>
 #include <keymaster/keymaster_context.h>
 #include <keymaster/km_openssl/software_random_source.h>
 #include <keymaster/soft_key_factory.h>
@@ -35,11 +36,13 @@ namespace keymaster {
 class SoftKeymasterKeyRegistrations;
 class Keymaster0Engine;
 class Keymaster1Engine;
+class Key;
 
 /**
  * SoftKeymasterContext provides the context for a non-secure implementation of AndroidKeymaster.
  */
-class SoftKeymasterContext: public KeymasterContext, SoftwareKeyBlobMaker, SoftwareRandomSource {
+class SoftKeymasterContext: public KeymasterContext, SoftwareKeyBlobMaker, SoftwareRandomSource,
+        AttestationRecordContext {
   public:
     explicit SoftKeymasterContext(const std::string& root_of_trust = "SW");
     ~SoftKeymasterContext() override;
@@ -57,10 +60,9 @@ class SoftKeymasterContext: public KeymasterContext, SoftwareKeyBlobMaker, Softw
      */
     keymaster_error_t SetHardwareDevice(keymaster1_device_t* keymaster1_device);
 
-    keymaster_security_level_t GetSecurityLevel() const override {
-        return KM_SECURITY_LEVEL_SOFTWARE;
-    }
-
+    /*********************************************************************************************
+     * Implement KeymasterContext
+     */
     keymaster_error_t SetSystemVersion(uint32_t os_version, uint32_t os_patchlevel) override;
     void GetSystemVersion(uint32_t* os_version, uint32_t* os_patchlevel) const override;
 
@@ -79,20 +81,18 @@ class SoftKeymasterContext: public KeymasterContext, SoftwareKeyBlobMaker, Softw
     keymaster_error_t DeleteAllKeys() const override;
     keymaster_error_t AddRngEntropy(const uint8_t* buf, size_t length) const override;
 
-    EVP_PKEY* AttestationKey(keymaster_algorithm_t algorithm,
-                             keymaster_error_t* error) const override;
-    keymaster_cert_chain_t* AttestationChain(keymaster_algorithm_t algorithm,
-                                             keymaster_error_t* error) const override;
-    keymaster_error_t GenerateUniqueId(uint64_t creation_date_time,
-                                       const keymaster_blob_t& application_id,
-                                       bool reset_since_rotation, Buffer* unique_id) const override;
+    keymaster_error_t GenerateAttestation(const Key& key,
+                                          const AuthorizationSet& attest_params,
+                                          const AuthorizationSet& tee_enforced,
+                                          const AuthorizationSet& sw_enforced,
+                                          CertChainPtr* cert_chain) const override;
+
 
     KeymasterEnforcement* enforcement_policy() override {
         // SoftKeymaster does no enforcement; it's all done by Keystore.
         return nullptr;
     }
 
-    void AddSystemVersionToSet(AuthorizationSet* auth_set) const;
     /*********************************************************************************************
      * Implement SoftwareKeyBlobMaker
      */

@@ -22,6 +22,7 @@
 
 #include <keymaster/asymmetric_key_factory.h>
 #include <keymaster/soft_key_factory.h>
+#include <keymaster/attestation_record.h>
 
 namespace keymaster {
 

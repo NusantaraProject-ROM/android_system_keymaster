@@ -21,7 +21,6 @@
 #include <openssl/asn1t.h>
 
 #include <keymaster/android_keymaster_utils.h>
-#include <keymaster/keymaster_context.h>
 #include <keymaster/km_openssl/openssl_err.h>
 #include <keymaster/km_openssl/openssl_utils.h>
 
@@ -476,7 +475,7 @@ static keymaster_error_t build_auth_list(const AuthorizationSet& auth_list, KM_A
 keymaster_error_t build_attestation_record(const AuthorizationSet& attestation_params,
                                            AuthorizationSet sw_enforced,
                                            AuthorizationSet tee_enforced,
-                                           const KeymasterContext& context,
+                                           const AttestationRecordContext& context,
                                            UniquePtr<uint8_t[]>* asn1_key_desc,
                                            size_t* asn1_key_desc_len) {
     assert(asn1_key_desc && asn1_key_desc_len);

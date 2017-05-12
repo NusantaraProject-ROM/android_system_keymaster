@@ -25,8 +25,6 @@
 
 namespace keymaster {
 
-class KeymasterContext;
-
 class Key {
   public:
     virtual ~Key() {}
@@ -37,16 +35,6 @@ class Key {
     virtual keymaster_error_t formatted_key_material(keymaster_key_format_t format,
                                                      UniquePtr<uint8_t[]>* material,
                                                      size_t* size) const = 0;
-
-    /**
-     * Generate an attestation certificate chain.
-     */
-    virtual keymaster_error_t GenerateAttestation(
-        const KeymasterContext& /* context */, const AuthorizationSet& /* attest_params */,
-        const AuthorizationSet& /* tee_enforced */, const AuthorizationSet& /* sw_enforced */,
-        keymaster_cert_chain_t* /* certificate_chain */) const {
-        return KM_ERROR_INCOMPATIBLE_ALGORITHM;
-    }
 
     const AuthorizationSet& authorizations() const { return authorizations_; }
 
