@@ -17,13 +17,10 @@
 #include <keymaster/contexts/soft_keymaster_context.h>
 #include <keymaster/legacy_support/rsa_keymaster1_key.h>
 
-#include <memory>
-
+#include <keymaster/km_openssl/openssl_utils.h>
 #include <keymaster/logger.h>
 
 #include "rsa_keymaster1_operation.h"
-
-using std::unique_ptr;
 
 namespace keymaster {
 
@@ -110,8 +107,8 @@ keymaster_error_t RsaKeymaster1KeyFactory::LoadKey(const KeymasterKeyBlob& key_m
         return KM_ERROR_OUTPUT_PARAMETER_NULL;
 
     keymaster_error_t error;
-    unique_ptr<RSA, RSA_Delete> rsa(engine_->BuildRsaKey(key_material, additional_params, &error));
-    if (!rsa)
+    RSA_Ptr rsa(engine_->BuildRsaKey(key_material, additional_params, &error));
+    if (!rsa.get())
         return error;
 
     key->reset(new (std::nothrow)

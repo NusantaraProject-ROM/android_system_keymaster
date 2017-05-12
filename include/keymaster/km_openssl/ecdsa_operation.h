@@ -29,7 +29,7 @@ namespace keymaster {
 class EcdsaOperation : public Operation {
   public:
     EcdsaOperation(keymaster_purpose_t purpose, keymaster_digest_t digest, EVP_PKEY* key)
-        : Operation(purpose), digest_(digest), ecdsa_key_(key) {
+        : Operation(purpose), digest_(digest), digest_algorithm_(nullptr), ecdsa_key_(key) {
         EVP_MD_CTX_init(&digest_ctx_);
     }
     ~EcdsaOperation();

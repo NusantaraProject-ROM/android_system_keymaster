@@ -31,6 +31,7 @@ class EcKey : public AsymmetricKey {
     EcKey(const AuthorizationSet& hw_enforced, const AuthorizationSet& sw_enforced,
           keymaster_error_t* error)
         : AsymmetricKey(hw_enforced, sw_enforced, error) {}
+    virtual ~EcKey() {}
 
     bool InternalToEvp(EVP_PKEY* pkey) const override;
     bool EvpToInternal(const EVP_PKEY* pkey) override;
@@ -43,7 +44,7 @@ class EcKey : public AsymmetricKey {
         : AsymmetricKey(hw_enforced, sw_enforced, error), ec_key_(ec_key) {}
 
   private:
-    UniquePtr<EC_KEY, EC_KEY_Delete> ec_key_;
+    EC_KEY_Ptr ec_key_;
 };
 
 }  // namespace keymaster

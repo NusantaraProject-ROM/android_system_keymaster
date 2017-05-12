@@ -615,7 +615,7 @@ keymaster_error_t build_attestation_record(const AuthorizationSet& attestation_p
 }
 
 // Copy all enumerated values with the specified tag from stack to auth_list.
-static bool get_repeated_enums(const stack_st_ASN1_INTEGER* stack, keymaster_tag_t tag,
+static bool get_repeated_enums(const ASN1_INTEGER_SET* stack, keymaster_tag_t tag,
                                AuthorizationSet* auth_list) {
     assert(keymaster_tag_get_type(tag) == KM_ENUM_REP);
     for (size_t i = 0; i < sk_ASN1_INTEGER_num(stack); ++i) {

@@ -67,11 +67,6 @@ AndroidKeymaster::AndroidKeymaster(KeymasterContext* context, size_t operation_t
 
 AndroidKeymaster::~AndroidKeymaster() {}
 
-struct AE_CTX_Delete {
-    void operator()(ae_ctx* ctx) const { ae_free(ctx); }
-};
-typedef UniquePtr<ae_ctx, AE_CTX_Delete> Unique_ae_ctx;
-
 // TODO(swillden): Unify support analysis.  Right now, we have per-keytype methods that determine if
 // specific modes, padding, etc. are supported for that key type, and AndroidKeymaster also has
 // methods that return the same information.  They'll get out of sync.  Best to put the knowledge in

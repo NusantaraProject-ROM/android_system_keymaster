@@ -748,13 +748,6 @@ keymaster_error_t SoftKeymasterContext::AddRngEntropy(const uint8_t* buf, size_t
     return KM_ERROR_OK;
 }
 
-void SoftKeymasterContext::AddSystemVersionToSet(AuthorizationSet* auth_set) const {
-    if (!auth_set->Contains(TAG_OS_VERSION))
-        auth_set->push_back(TAG_OS_VERSION, os_version_);
-    if (!auth_set->Contains(TAG_OS_PATCHLEVEL))
-        auth_set->push_back(TAG_OS_PATCHLEVEL, os_patchlevel_);
-}
-
 EVP_PKEY* SoftKeymasterContext::AttestationKey(keymaster_algorithm_t algorithm,
                                                keymaster_error_t* error) const {
 

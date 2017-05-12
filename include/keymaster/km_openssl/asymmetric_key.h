@@ -28,6 +28,7 @@ class AsymmetricKey : public Key {
     AsymmetricKey(const AuthorizationSet& hw_enforced, const AuthorizationSet& sw_enforced,
                   keymaster_error_t* error)
         : Key(hw_enforced, sw_enforced, error) {}
+    virtual ~AsymmetricKey() {}
 
     keymaster_error_t formatted_key_material(keymaster_key_format_t format,
                                              UniquePtr<uint8_t[]>* material,
