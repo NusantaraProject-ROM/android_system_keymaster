@@ -14,13 +14,10 @@
  * limitations under the License.
  */
 
-#include <keymaster/new>
 #include <keymaster/operation_table.h>
 #include <keymaster/operation.h>
-#include <keymaster/km_openssl/openssl_err.h>
 
-#include <openssl/rand.h>
-
+#include <keymaster/new>
 
 namespace keymaster {
 
@@ -39,8 +36,10 @@ keymaster_error_t OperationTable::Add(Operation* operation,
     }
 
     UniquePtr<Operation> op(operation);
-    if (RAND_bytes(reinterpret_cast<uint8_t*>(op_handle), sizeof(*op_handle)) != 1)
-        return TranslateLastOpenSslError();
+    keymaster_error_t rc = random_source_.GenerateRandom(reinterpret_cast<uint8_t*>(op_handle),
+                                                         sizeof(*op_handle));
+    if (rc != KM_ERROR_OK)
+        return rc;
     if (*op_handle == 0) {
         // Statistically this is vanishingly unlikely, which means if it ever happens in practice,
         // it indicates a broken RNG.

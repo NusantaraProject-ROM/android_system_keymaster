@@ -72,6 +72,7 @@ cc_library_shared {
         "km_openssl/rsa_key.cpp",
         "km_openssl/rsa_key_factory.cpp",
         "km_openssl/rsa_operation.cpp",
+        "km_openssl/software_random_source.cpp",
         "km_openssl/symmetric_key.cpp",
         "android_keymaster/android_keymaster.cpp",
         "android_keymaster/android_keymaster_messages.cpp",

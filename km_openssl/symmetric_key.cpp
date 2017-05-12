@@ -51,7 +51,7 @@ keymaster_error_t SymmetricKeyFactory::GenerateKey(const AuthorizationSet& key_d
     if (!key_material.key_material)
         return KM_ERROR_MEMORY_ALLOCATION_FAILED;
 
-    error = context_.GenerateRandom(key_material.writable_data(), key_data_size);
+    error = random_source_.GenerateRandom(key_material.writable_data(), key_data_size);
     if (error != KM_ERROR_OK) {
         LOG_E("Error generating %d bit symmetric key", key_size_bits);
         return error;

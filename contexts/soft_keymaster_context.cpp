@@ -748,12 +748,6 @@ keymaster_error_t SoftKeymasterContext::AddRngEntropy(const uint8_t* buf, size_t
     return KM_ERROR_OK;
 }
 
-keymaster_error_t SoftKeymasterContext::GenerateRandom(uint8_t* buf, size_t length) const {
-    if (RAND_bytes(buf, length) != 1)
-        return KM_ERROR_UNKNOWN_ERROR;
-    return KM_ERROR_OK;
-}
-
 void SoftKeymasterContext::AddSystemVersionToSet(AuthorizationSet* auth_set) const {
     if (!auth_set->Contains(TAG_OS_VERSION))
         auth_set->push_back(TAG_OS_VERSION, os_version_);

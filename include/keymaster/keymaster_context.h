@@ -23,6 +23,7 @@
 
 #include <hardware/keymaster_defs.h>
 #include <keymaster/keymaster_enforcement.h>
+#include <keymaster/random_source.h>
 
 namespace keymaster {
 
@@ -60,7 +61,7 @@ struct KeymasterKeyBlob;
  *
  * More contexts are possible.
  */
-class KeymasterContext {
+class KeymasterContext : public virtual RandomSource {
   public:
     KeymasterContext() {}
     virtual ~KeymasterContext(){};
@@ -134,11 +135,6 @@ class KeymasterContext {
      * "poison" the CPRNG outputs, making them predictable.
      */
     virtual keymaster_error_t AddRngEntropy(const uint8_t* buf, size_t length) const = 0;
-
-    /**
-     * Generates \p length random bytes, placing them in \p buf.
-     */
-    virtual keymaster_error_t GenerateRandom(uint8_t* buf, size_t length) const = 0;
 
     /**
      * Return the enforcement policy for this context, or null if no enforcement should be done.

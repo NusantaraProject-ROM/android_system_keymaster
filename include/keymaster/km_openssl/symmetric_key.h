@@ -19,6 +19,7 @@
 
 #include <keymaster/key_factory.h>
 #include <keymaster/soft_key_factory.h>
+#include <keymaster/random_source.h>
 
 #include <keymaster/key.h>
 
@@ -29,9 +30,9 @@ class SymmetricKey;
 class SymmetricKeyFactory : public KeyFactory, public SoftKeyFactoryMixin {
   public:
     explicit SymmetricKeyFactory(const SoftwareKeyBlobMaker* blob_maker,
-                                 const KeymasterContext* context) :
+                                 const RandomSource* random_source) :
             SoftKeyFactoryMixin(blob_maker),
-            context_(*context) {}
+            random_source_(*random_source) {}
 
     keymaster_error_t GenerateKey(const AuthorizationSet& key_description,
                                   KeymasterKeyBlob* key_blob, AuthorizationSet* hw_enforced,
@@ -56,7 +57,7 @@ class SymmetricKeyFactory : public KeyFactory, public SoftKeyFactoryMixin {
         *format_count = 0;
         return NULL;
     }
-    const KeymasterContext& context_;
+    const RandomSource& random_source_;
 };
 
 class SymmetricKey : public Key {

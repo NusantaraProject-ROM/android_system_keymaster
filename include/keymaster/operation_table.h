@@ -20,6 +20,7 @@
 #include <keymaster/UniquePtr.h>
 
 #include <hardware/keymaster_defs.h>
+#include <keymaster/random_source.h>
 
 namespace keymaster {
 
@@ -27,7 +28,8 @@ class Operation;
 
 class OperationTable {
   public:
-    explicit OperationTable(size_t table_size) : table_size_(table_size) {}
+    explicit OperationTable(size_t table_size, const RandomSource* random_source) :
+            table_size_(table_size), random_source_(*random_source) {}
 
     struct Entry {
         Entry() {
@@ -46,6 +48,7 @@ class OperationTable {
   private:
     UniquePtr<Entry[]> table_;
     size_t table_size_;
+    const RandomSource& random_source_;
 };
 
 }  // namespace keymaster

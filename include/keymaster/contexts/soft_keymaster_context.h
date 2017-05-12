@@ -24,8 +24,11 @@
 
 #include <hardware/keymaster0.h>
 #include <hardware/keymaster1.h>
+
 #include <keymaster/keymaster_context.h>
+#include <keymaster/km_openssl/software_random_source.h>
 #include <keymaster/soft_key_factory.h>
+#include <keymaster/random_source.h>
 
 namespace keymaster {
 
@@ -36,7 +39,7 @@ class Keymaster1Engine;
 /**
  * SoftKeymasterContext provides the context for a non-secure implementation of AndroidKeymaster.
  */
-class SoftKeymasterContext: public KeymasterContext, SoftwareKeyBlobMaker {
+class SoftKeymasterContext: public KeymasterContext, SoftwareKeyBlobMaker, SoftwareRandomSource {
   public:
     explicit SoftKeymasterContext(const std::string& root_of_trust = "SW");
     ~SoftKeymasterContext() override;
@@ -75,7 +78,6 @@ class SoftKeymasterContext: public KeymasterContext, SoftwareKeyBlobMaker {
     keymaster_error_t DeleteKey(const KeymasterKeyBlob& blob) const override;
     keymaster_error_t DeleteAllKeys() const override;
     keymaster_error_t AddRngEntropy(const uint8_t* buf, size_t length) const override;
-    keymaster_error_t GenerateRandom(uint8_t* buf, size_t length) const override;
 
     EVP_PKEY* AttestationKey(keymaster_algorithm_t algorithm,
                              keymaster_error_t* error) const override;
