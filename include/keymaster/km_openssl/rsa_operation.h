@@ -176,9 +176,9 @@ class RsaOperationFactory : public OperationFactory {
     KeyType registry_key() const override { return KeyType(KM_ALGORITHM_RSA, purpose()); }
     virtual keymaster_purpose_t purpose() const = 0;
 
-    Operation* CreateOperation(const Key& key, const AuthorizationSet& begin_params,
+    OperationPtr CreateOperation(const Key& key, const AuthorizationSet& begin_params,
                                keymaster_error_t* error) override {
-        return CreateRsaOperation(key, begin_params, error);
+        return OperationPtr(CreateRsaOperation(key, begin_params, error));
     }
     const keymaster_digest_t* SupportedDigests(size_t* digest_count) const override;
 

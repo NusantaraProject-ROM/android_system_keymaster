@@ -31,6 +31,8 @@ namespace keymaster {
 class AuthorizationSet;
 class Key;
 class Operation;
+using OperationPtr = UniquePtr<Operation>;
+
 
 class OperationFactory {
   public:
@@ -51,8 +53,9 @@ class OperationFactory {
     virtual KeyType registry_key() const = 0;
 
     // Factory methods
-    virtual Operation* CreateOperation(const Key& key, const AuthorizationSet& begin_params,
-                                       keymaster_error_t* error) = 0;
+    virtual OperationPtr CreateOperation(const Key& key,
+                                         const AuthorizationSet& begin_params,
+                                         keymaster_error_t* error) = 0;
 
     // Informational methods.  The returned arrays reference static memory and must not be
     // deallocated or modified.

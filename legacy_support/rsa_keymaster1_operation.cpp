@@ -111,9 +111,9 @@ static EVP_PKEY* GetEvpKey(const RsaKeymaster1Key& key, keymaster_error_t* error
     return pkey.release();
 }
 
-Operation* RsaKeymaster1OperationFactory::CreateOperation(const Key& key,
-                                                          const AuthorizationSet& begin_params,
-                                                          keymaster_error_t* error) {
+OperationPtr RsaKeymaster1OperationFactory::CreateOperation(const Key& key,
+                                                            const AuthorizationSet& begin_params,
+                                                            keymaster_error_t* error) {
     keymaster_digest_t digest;
     if (!GetAndValidateDigest(begin_params, key, &digest, error))
         return nullptr;
@@ -129,11 +129,12 @@ Operation* RsaKeymaster1OperationFactory::CreateOperation(const Key& key,
 
     switch (purpose_) {
     case KM_PURPOSE_SIGN:
-        return new RsaKeymaster1Operation<RsaSignOperation>(digest, padding, rsa.release(),
-                                                            engine_);
+        return OperationPtr(new RsaKeymaster1Operation<RsaSignOperation>(digest, padding,
+                                                                         rsa.release(), engine_));
     case KM_PURPOSE_DECRYPT:
-        return new RsaKeymaster1Operation<RsaDecryptOperation>(digest, padding, rsa.release(),
-                                                               engine_);
+        return OperationPtr(new RsaKeymaster1Operation<RsaDecryptOperation>(digest, padding,
+                                                                            rsa.release(),
+                                                                            engine_));
     default:
         LOG_E("Bug: Pubkey operation requested.  Those should be handled by normal RSA operations.",
               0);

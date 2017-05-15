@@ -22,26 +22,15 @@
 
 namespace keymaster {
 
-OperationTable::~OperationTable() {
-    if (table_) {
-        for (size_t i = 0; i < table_size_; ++i) {
-            delete table_[i];
-        }
-    }
-}
-
-keymaster_error_t OperationTable::Add(Operation* operation) {
+keymaster_error_t OperationTable::Add(OperationPtr&& operation) {
     if (!table_) {
-        table_.reset(new (std::nothrow) Operation*[table_size_]);
+        table_.reset(new (std::nothrow) OperationPtr[table_size_]);
         if (!table_)
             return KM_ERROR_MEMORY_ALLOCATION_FAILED;
-        for (size_t i = 0; i < table_size_; ++i) {
-            table_[i] = nullptr;
-        }
     }
     for (size_t i = 0; i < table_size_; ++i) {
-        if (table_[i] == nullptr) {
-            table_[i] = operation;
+        if (!table_[i]) {
+            table_[i] = move(operation);
             return KM_ERROR_OK;
         }
     }
@@ -57,7 +46,7 @@ Operation* OperationTable::Find(keymaster_operation_handle_t op_handle) {
 
     for (size_t i = 0; i < table_size_; ++i) {
         if (table_[i] && table_[i]->operation_handle() == op_handle)
-            return table_[i];
+            return table_[i].get();
     }
     return NULL;
 }
@@ -68,8 +57,7 @@ bool OperationTable::Delete(keymaster_operation_handle_t op_handle) {
 
     for (size_t i = 0; i < table_size_; ++i) {
         if (table_[i] && table_[i]->operation_handle() == op_handle) {
-            delete table_[i];
-            table_[i] = nullptr;
+            table_[i].reset();
             return true;
         }
     }

@@ -32,8 +32,8 @@ class AesOperationFactory : public OperationFactory {
   public:
     KeyType registry_key() const override { return KeyType(KM_ALGORITHM_AES, purpose()); }
 
-    Operation* CreateOperation(const Key& key, const AuthorizationSet& begin_params,
-                               keymaster_error_t* error) override;
+    OperationPtr CreateOperation(const Key& key, const AuthorizationSet& begin_params,
+                                 keymaster_error_t* error) override;
     const keymaster_block_mode_t* SupportedBlockModes(size_t* block_mode_count) const override;
     const keymaster_padding_t* SupportedPaddingModes(size_t* padding_count) const override;
 

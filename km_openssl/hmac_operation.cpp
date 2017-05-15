@@ -34,9 +34,9 @@ typedef int openssl_size_t;
 
 namespace keymaster {
 
-Operation* HmacOperationFactory::CreateOperation(const Key& key,
-                                                 const AuthorizationSet& begin_params,
-                                                 keymaster_error_t* error) {
+OperationPtr HmacOperationFactory::CreateOperation(const Key& key,
+                                                   const AuthorizationSet& begin_params,
+                                                   keymaster_error_t* error) {
     uint32_t min_mac_length_bits;
     if (!key.authorizations().GetTagValue(TAG_MIN_MAC_LENGTH, &min_mac_length_bits)) {
         LOG_E("HMAC key must have KM_TAG_MIN_MAC_LENGTH", 0);
@@ -78,7 +78,7 @@ Operation* HmacOperationFactory::CreateOperation(const Key& key,
     if (*error != KM_ERROR_OK)
         return nullptr;
 
-    return op.release();
+    return op;
 }
 
 static keymaster_digest_t supported_digests[] = {KM_DIGEST_SHA1, KM_DIGEST_SHA_2_224,

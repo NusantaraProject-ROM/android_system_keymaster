@@ -28,9 +28,9 @@ static const keymaster_digest_t supported_digests[] = {KM_DIGEST_NONE,      KM_D
                                                        KM_DIGEST_SHA_2_224, KM_DIGEST_SHA_2_256,
                                                        KM_DIGEST_SHA_2_384, KM_DIGEST_SHA_2_512};
 
-Operation* EcdsaOperationFactory::CreateOperation(const Key& key,
-                                                  const AuthorizationSet& begin_params,
-                                                  keymaster_error_t* error) {
+OperationPtr EcdsaOperationFactory::CreateOperation(const Key& key,
+                                                    const AuthorizationSet& begin_params,
+                                                    keymaster_error_t* error) {
     const EcKey* ecdsa_key = static_cast<const EcKey*>(&key);
     if (!ecdsa_key) {
         *error = KM_ERROR_UNKNOWN_ERROR;
@@ -48,7 +48,7 @@ Operation* EcdsaOperationFactory::CreateOperation(const Key& key,
         return nullptr;
 
     *error = KM_ERROR_OK;
-    Operation* op = InstantiateOperation(digest, pkey.release());
+    auto op = OperationPtr(InstantiateOperation(digest, pkey.release()));
     if (!op)
         *error = KM_ERROR_MEMORY_ALLOCATION_FAILED;
     return op;

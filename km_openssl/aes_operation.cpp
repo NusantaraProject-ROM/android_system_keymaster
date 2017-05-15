@@ -76,9 +76,9 @@ static keymaster_error_t GetAndValidateGcmTagLength(const AuthorizationSet& begi
     return KM_ERROR_OK;
 }
 
-Operation* AesOperationFactory::CreateOperation(const Key& key,
-                                                const AuthorizationSet& begin_params,
-                                                keymaster_error_t* error) {
+OperationPtr AesOperationFactory::CreateOperation(const Key& key,
+                                                  const AuthorizationSet& begin_params,
+                                                  keymaster_error_t* error) {
     *error = KM_ERROR_OK;
     const SymmetricKey* symmetric_key = static_cast<const SymmetricKey*>(&key);
 
@@ -127,17 +127,17 @@ Operation* AesOperationFactory::CreateOperation(const Key& key,
 
     bool caller_nonce = key.authorizations().GetTagValue(TAG_CALLER_NONCE);
 
-    Operation* op = nullptr;
+    OperationPtr op;
     switch (purpose()) {
     case KM_PURPOSE_ENCRYPT:
-        op = new (std::nothrow)
+        op.reset(new (std::nothrow)
             AesEvpEncryptOperation(block_mode, padding, caller_nonce, tag_length,
-                                   symmetric_key->key_data(), symmetric_key->key_data_size());
+                                   symmetric_key->key_data(), symmetric_key->key_data_size()));
         break;
     case KM_PURPOSE_DECRYPT:
-        op = new (std::nothrow)
+        op.reset(new (std::nothrow)
             AesEvpDecryptOperation(block_mode, padding, tag_length, symmetric_key->key_data(),
-                                   symmetric_key->key_data_size());
+                                   symmetric_key->key_data_size()));
         break;
     default:
         *error = KM_ERROR_UNSUPPORTED_PURPOSE;

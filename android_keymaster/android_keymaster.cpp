@@ -251,7 +251,7 @@ void AndroidKeymaster::BeginOperation(const BeginOperationRequest& request,
     if (!factory)
         return;
 
-    UniquePtr<Operation> operation(
+    OperationPtr operation(
         factory->CreateOperation(*key, request.additional_params, &response->error));
     if (operation.get() == NULL)
         return;
@@ -276,7 +276,7 @@ void AndroidKeymaster::BeginOperation(const BeginOperationRequest& request,
 
     operation->SetAuthorizations(key->authorizations());
     response->op_handle = operation->operation_handle();
-    response->error = operation_table_->Add(operation.release());
+    response->error = operation_table_->Add(move(operation));
 }
 
 void AndroidKeymaster::UpdateOperation(const UpdateOperationRequest& request,

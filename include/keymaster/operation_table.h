@@ -25,19 +25,20 @@
 namespace keymaster {
 
 class Operation;
+using OperationPtr = UniquePtr<Operation>;
+
 
 class OperationTable {
   public:
     explicit OperationTable(size_t table_size) :
             table_size_(table_size) {}
-    ~OperationTable();
 
-    keymaster_error_t Add(Operation* operation);
+    keymaster_error_t Add(OperationPtr&& operation);
     Operation* Find(keymaster_operation_handle_t op_handle);
     bool Delete(keymaster_operation_handle_t);
 
   private:
-    UniquePtr<Operation*[]> table_;
+    UniquePtr<OperationPtr[]> table_;
     size_t table_size_;
 };
 
