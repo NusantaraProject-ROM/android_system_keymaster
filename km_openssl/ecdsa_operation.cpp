@@ -108,6 +108,10 @@ keymaster_error_t EcdsaOperation::StoreData(const Buffer& input, size_t* input_c
 
 keymaster_error_t EcdsaSignOperation::Begin(const AuthorizationSet& /* input_params */,
                                             AuthorizationSet* /* output_params */) {
+    auto rc = GenerateRandom(reinterpret_cast<uint8_t*>(&operation_handle_),
+                             (size_t)sizeof(operation_handle_));
+    if (rc != KM_ERROR_OK) return rc;
+
     keymaster_error_t error = InitDigest();
     if (error != KM_ERROR_OK)
         return error;
@@ -173,6 +177,10 @@ keymaster_error_t EcdsaSignOperation::Finish(const AuthorizationSet& additional_
 
 keymaster_error_t EcdsaVerifyOperation::Begin(const AuthorizationSet& /* input_params */,
                                               AuthorizationSet* /* output_params */) {
+    auto rc = GenerateRandom(reinterpret_cast<uint8_t*>(&operation_handle_),
+                             (size_t)sizeof(operation_handle_));
+    if (rc != KM_ERROR_OK) return rc;
+
     keymaster_error_t error = InitDigest();
     if (error != KM_ERROR_OK)
         return error;

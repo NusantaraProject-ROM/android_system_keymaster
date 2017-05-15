@@ -94,6 +94,7 @@ class Operation {
 
     void set_key_id(uint64_t key_id) { key_id_ = key_id; }
     uint64_t key_id() const { return key_id_; }
+    virtual keymaster_operation_handle_t operation_handle() const { return operation_handle_; }
 
     void SetAuthorizations(const AuthorizationSet& auths) {
         key_auths_.Reinitialize(auths.data(), auths.size());
@@ -114,6 +115,7 @@ protected:
     // Helper function for implementing Finish() methods that need to call Update() to process
     // input, but don't expect any output.
     keymaster_error_t UpdateForFinish(const AuthorizationSet& input_params, const Buffer& input);
+    keymaster_operation_handle_t operation_handle_;
 
   private:
     const keymaster_purpose_t purpose_;

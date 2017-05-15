@@ -28,27 +28,17 @@ class Operation;
 
 class OperationTable {
   public:
-    explicit OperationTable(size_t table_size, const RandomSource* random_source) :
-            table_size_(table_size), random_source_(*random_source) {}
+    explicit OperationTable(size_t table_size) :
+            table_size_(table_size) {}
+    ~OperationTable();
 
-    struct Entry {
-        Entry() {
-            handle = 0;
-            operation = NULL;
-        };
-        ~Entry();
-        keymaster_operation_handle_t handle;
-        Operation* operation;
-    };
-
-    keymaster_error_t Add(Operation* operation, keymaster_operation_handle_t* op_handle);
+    keymaster_error_t Add(Operation* operation);
     Operation* Find(keymaster_operation_handle_t op_handle);
     bool Delete(keymaster_operation_handle_t);
 
   private:
-    UniquePtr<Entry[]> table_;
+    UniquePtr<Operation*[]> table_;
     size_t table_size_;
-    const RandomSource& random_source_;
 };
 
 }  // namespace keymaster

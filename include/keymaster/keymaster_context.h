@@ -21,7 +21,6 @@
 
 #include <hardware/keymaster_defs.h>
 #include <keymaster/keymaster_enforcement.h>
-#include <keymaster/random_source.h>
 #include <keymaster/android_keymaster_utils.h>
 
 namespace keymaster {
@@ -62,7 +61,7 @@ class Key;
  *
  * More contexts are possible.
  */
-class KeymasterContext : public virtual RandomSource {
+class KeymasterContext {
   public:
     KeymasterContext() {}
     virtual ~KeymasterContext(){};

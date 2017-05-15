@@ -16,40 +16,32 @@
 
 #include <keymaster/operation_table.h>
 #include <keymaster/operation.h>
+#include <keymaster/android_keymaster_utils.h>
 
 #include <keymaster/new>
 
 namespace keymaster {
 
-OperationTable::Entry::~Entry() {
-    delete operation;
-    operation = NULL;
-    handle = 0;
+OperationTable::~OperationTable() {
+    if (table_) {
+        for (size_t i = 0; i < table_size_; ++i) {
+            delete table_[i];
+        }
+    }
 }
 
-keymaster_error_t OperationTable::Add(Operation* operation,
-                                      keymaster_operation_handle_t* op_handle) {
-    if (!table_.get()) {
-        table_.reset(new (std::nothrow) Entry[table_size_]);
-        if (!table_.get())
+keymaster_error_t OperationTable::Add(Operation* operation) {
+    if (!table_) {
+        table_.reset(new (std::nothrow) Operation*[table_size_]);
+        if (!table_)
             return KM_ERROR_MEMORY_ALLOCATION_FAILED;
+        for (size_t i = 0; i < table_size_; ++i) {
+            table_[i] = nullptr;
+        }
     }
-
-    UniquePtr<Operation> op(operation);
-    keymaster_error_t rc = random_source_.GenerateRandom(reinterpret_cast<uint8_t*>(op_handle),
-                                                         sizeof(*op_handle));
-    if (rc != KM_ERROR_OK)
-        return rc;
-    if (*op_handle == 0) {
-        // Statistically this is vanishingly unlikely, which means if it ever happens in practice,
-        // it indicates a broken RNG.
-        return KM_ERROR_UNKNOWN_ERROR;
-    }
-
     for (size_t i = 0; i < table_size_; ++i) {
-        if (table_[i].operation == NULL) {
-            table_[i].operation = op.release();
-            table_[i].handle = *op_handle;
+        if (table_[i] == nullptr) {
+            table_[i] = operation;
             return KM_ERROR_OK;
         }
     }
@@ -64,8 +56,8 @@ Operation* OperationTable::Find(keymaster_operation_handle_t op_handle) {
         return NULL;
 
     for (size_t i = 0; i < table_size_; ++i) {
-        if (table_[i].handle == op_handle)
-            return table_[i].operation;
+        if (table_[i] && table_[i]->operation_handle() == op_handle)
+            return table_[i];
     }
     return NULL;
 }
@@ -75,10 +67,9 @@ bool OperationTable::Delete(keymaster_operation_handle_t op_handle) {
         return false;
 
     for (size_t i = 0; i < table_size_; ++i) {
-        if (table_[i].handle == op_handle) {
-            delete table_[i].operation;
-            table_[i].operation = NULL;
-            table_[i].handle = 0;
+        if (table_[i] && table_[i]->operation_handle() == op_handle) {
+            delete table_[i];
+            table_[i] = nullptr;
             return true;
         }
     }

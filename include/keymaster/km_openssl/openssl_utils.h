@@ -96,6 +96,8 @@ keymaster_error_t EvpKeyToKeyMaterial(const EVP_PKEY* evp_pkey, KeymasterKeyBlob
 
 size_t ec_group_size_bits(EC_KEY* ec_key);
 
+keymaster_error_t GenerateRandom(uint8_t* buf, size_t length);
+
 }  // namespace keymaster
 
 #endif  // SYSTEM_KEYMASTER_OPENSSL_UTILS_H_

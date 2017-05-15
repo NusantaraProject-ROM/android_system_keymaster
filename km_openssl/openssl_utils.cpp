@@ -16,6 +16,7 @@
 
 #include <keymaster/km_openssl/openssl_utils.h>
 
+#include <openssl/rand.h>
 #include <keymaster/android_keymaster_utils.h>
 
 #include <keymaster/km_openssl/openssl_err.h>
@@ -131,6 +132,12 @@ size_t ec_group_size_bits(EC_KEY* ec_key) {
         return 0;
     }
     return BN_num_bits(order.get());
+}
+
+keymaster_error_t GenerateRandom(uint8_t* buf, size_t length) {
+    if (RAND_bytes(buf, length) != 1)
+        return KM_ERROR_UNKNOWN_ERROR;
+    return KM_ERROR_OK;
 }
 
 }  // namespace keymaster

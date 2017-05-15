@@ -23,6 +23,7 @@
 
 #include <keymaster/km_openssl/hmac_key.h>
 #include <keymaster/km_openssl/openssl_err.h>
+#include <keymaster/km_openssl/openssl_utils.h>
 
 #if defined(OPENSSL_IS_BORINGSSL)
 #include <openssl/mem.h>
@@ -144,6 +145,10 @@ HmacOperation::~HmacOperation() {
 
 keymaster_error_t HmacOperation::Begin(const AuthorizationSet& /* input_params */,
                                        AuthorizationSet* /* output_params */) {
+    auto rc = GenerateRandom(reinterpret_cast<uint8_t*>(&operation_handle_),
+                             (size_t)sizeof(operation_handle_));
+    if (rc != KM_ERROR_OK) return rc;
+
     return error_;
 }
 

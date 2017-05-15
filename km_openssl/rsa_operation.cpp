@@ -136,6 +136,10 @@ RsaOperation::~RsaOperation() {
 
 keymaster_error_t RsaOperation::Begin(const AuthorizationSet& /* input_params */,
                                       AuthorizationSet* /* output_params */) {
+    auto rc = GenerateRandom(reinterpret_cast<uint8_t*>(&operation_handle_),
+                             (size_t)sizeof(operation_handle_));
+    if (rc != KM_ERROR_OK) return rc;
+
     return InitDigest();
 }
 

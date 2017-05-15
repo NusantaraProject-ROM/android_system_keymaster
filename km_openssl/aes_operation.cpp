@@ -30,6 +30,7 @@
 
 #include <keymaster/km_openssl/aes_key.h>
 #include <keymaster/km_openssl/openssl_err.h>
+#include <keymaster/km_openssl/openssl_utils.h>
 
 namespace keymaster {
 
@@ -180,6 +181,10 @@ AesEvpOperation::~AesEvpOperation() {
 
 keymaster_error_t AesEvpOperation::Begin(const AuthorizationSet& /* input_params */,
                                          AuthorizationSet* /* output_params */) {
+    auto rc = GenerateRandom(reinterpret_cast<uint8_t*>(&operation_handle_),
+                             (size_t)sizeof(operation_handle_));
+    if (rc != KM_ERROR_OK) return rc;
+
     if (block_mode_ == KM_MODE_GCM) {
         aad_block_buf_length_ = 0;
         aad_block_buf_.reset(new (std::nothrow) uint8_t[AES_BLOCK_SIZE]);

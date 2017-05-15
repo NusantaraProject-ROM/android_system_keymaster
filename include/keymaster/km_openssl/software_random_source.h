@@ -22,7 +22,7 @@
 
 namespace keymaster {
 
-class SoftwareRandomSource : public virtual RandomSource {
+class SoftwareRandomSource : public RandomSource {
 public:
     /**
      * Generates \p length random bytes, placing them in \p buf.
