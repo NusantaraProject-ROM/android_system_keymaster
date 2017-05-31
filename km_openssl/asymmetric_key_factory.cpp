@@ -38,27 +38,30 @@ AsymmetricKeyFactory::SupportedExportFormats(size_t* format_count) const {
     return supported_export_formats;
 }
 
-keymaster_error_t AsymmetricKeyFactory::LoadKey(const KeymasterKeyBlob& key_material,
+keymaster_error_t AsymmetricKeyFactory::LoadKey(KeymasterKeyBlob&& key_material,
                                                 const AuthorizationSet& /* additional_params */,
-                                                const AuthorizationSet& hw_enforced,
-                                                const AuthorizationSet& sw_enforced,
+                                                AuthorizationSet&& hw_enforced,
+                                                AuthorizationSet&& sw_enforced,
                                                 UniquePtr<Key>* key) const {
-    UniquePtr<AsymmetricKey> asymmetric_key;
-    keymaster_error_t error = CreateEmptyKey(hw_enforced, sw_enforced, &asymmetric_key);
+    UniquePtr<AsymmetricKey> asym_key;
+    keymaster_error_t error = CreateEmptyKey(move(hw_enforced), move(sw_enforced), &asym_key);
     if (error != KM_ERROR_OK)
         return error;
 
     const uint8_t* tmp = key_material.key_material;
+    asym_key->key_material() = move(key_material);
+
     EVP_PKEY* pkey =
-        d2i_PrivateKey(evp_key_type(), NULL /* pkey */, &tmp, key_material.key_material_size);
+        d2i_PrivateKey(evp_key_type(), NULL /* pkey */, &tmp,
+                       asym_key->key_material().key_material_size);
     if (!pkey)
         return TranslateLastOpenSslError();
     UniquePtr<EVP_PKEY, EVP_PKEY_Delete> pkey_deleter(pkey);
 
-    if (!asymmetric_key->EvpToInternal(pkey))
+    if (!asym_key->EvpToInternal(pkey))
         error = TranslateLastOpenSslError();
     else
-        key->reset(asymmetric_key.release());
+        key->reset(asym_key.release());
 
     return error;
 }

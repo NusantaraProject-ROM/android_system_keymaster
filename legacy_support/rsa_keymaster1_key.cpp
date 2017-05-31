@@ -98,10 +98,10 @@ keymaster_error_t RsaKeymaster1KeyFactory::ImportKey(
                               output_key_blob, hw_enforced, sw_enforced);
 }
 
-keymaster_error_t RsaKeymaster1KeyFactory::LoadKey(const KeymasterKeyBlob& key_material,
+keymaster_error_t RsaKeymaster1KeyFactory::LoadKey(KeymasterKeyBlob&& key_material,
                                                    const AuthorizationSet& additional_params,
-                                                   const AuthorizationSet& hw_enforced,
-                                                   const AuthorizationSet& sw_enforced,
+                                                   AuthorizationSet&& hw_enforced,
+                                                   AuthorizationSet&& sw_enforced,
                                                    UniquePtr<Key>* key) const {
     if (!key)
         return KM_ERROR_OUTPUT_PARAMETER_NULL;
@@ -112,13 +112,11 @@ keymaster_error_t RsaKeymaster1KeyFactory::LoadKey(const KeymasterKeyBlob& key_m
         return error;
 
     key->reset(new (std::nothrow)
-                   RsaKeymaster1Key(rsa.release(), hw_enforced, sw_enforced, &error));
-    if (!key->get())
-        error = KM_ERROR_MEMORY_ALLOCATION_FAILED;
+                   RsaKeymaster1Key(rsa.release(), move(hw_enforced), move(sw_enforced), this));
+    if (!(*key))
+        return KM_ERROR_MEMORY_ALLOCATION_FAILED;
 
-    if (error != KM_ERROR_OK)
-        return error;
-
+    (*key)->key_material() = move(key_material);
     return KM_ERROR_OK;
 }
 

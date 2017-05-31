@@ -54,10 +54,9 @@ keymaster_error_t SetKeyBlobAuthorizations(const AuthorizationSet& key_descripti
                                            keymaster_key_origin_t origin, uint32_t os_version,
                                            uint32_t os_patchlevel, AuthorizationSet* hw_enforced,
                                            AuthorizationSet* sw_enforced);
-keymaster_error_t UpgradeSoftKeyBlob(const uint32_t os_version, const uint32_t os_patchlevel,
+keymaster_error_t UpgradeSoftKeyBlob(const UniquePtr<Key>& key,
+                                     const uint32_t os_version, const uint32_t os_patchlevel,
                                      const AuthorizationSet& upgrade_params,
-                                     const KeymasterKeyBlob& key_material,
-                                     AuthorizationSet* hw_enforced, AuthorizationSet* sw_enforced,
                                      KeymasterKeyBlob* upgraded_key);
 } // namespace keymaster
 

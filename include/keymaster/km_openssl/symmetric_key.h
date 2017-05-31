@@ -64,22 +64,15 @@ class SymmetricKey : public Key {
   public:
     ~SymmetricKey();
 
-    virtual keymaster_error_t key_material(UniquePtr<uint8_t[]>* key_material, size_t* size) const;
     virtual keymaster_error_t formatted_key_material(keymaster_key_format_t, UniquePtr<uint8_t[]>*,
                                                      size_t*) const {
         return KM_ERROR_UNSUPPORTED_KEY_FORMAT;
     }
 
-    const uint8_t* key_data() const { return key_data_.get(); }
-    size_t key_data_size() const { return key_data_size_; }
-
   protected:
-    SymmetricKey(const KeymasterKeyBlob& key_material, const AuthorizationSet& hw_enforced,
-                 const AuthorizationSet& sw_enforced, keymaster_error_t* error);
-
-  private:
-    size_t key_data_size_;
-    UniquePtr<uint8_t[]> key_data_;
+    SymmetricKey(KeymasterKeyBlob&& key_material, AuthorizationSet&& hw_enforced,
+                 AuthorizationSet&& sw_enforced,
+                 const KeyFactory* key_factory);
 };
 
 }  // namespace keymaster

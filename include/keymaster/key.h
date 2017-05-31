@@ -22,8 +22,11 @@
 #include <hardware/keymaster_defs.h>
 #include <keymaster/authorization_set.h>
 #include <keymaster/UniquePtr.h>
+#include <keymaster/android_keymaster_utils.h>
 
 namespace keymaster {
+
+class KeyFactory;
 
 class Key {
   public:
@@ -36,21 +39,30 @@ class Key {
                                                      UniquePtr<uint8_t[]>* material,
                                                      size_t* size) const = 0;
 
-    const AuthorizationSet& authorizations() const { return authorizations_; }
+    AuthProxy authorizations() const {
+        return AuthProxy(hw_enforced_, sw_enforced_);
+    }
+    const AuthorizationSet& hw_enforced() const { return hw_enforced_; }
+    const AuthorizationSet& sw_enforced() const { return sw_enforced_; }
+    AuthorizationSet& hw_enforced() { return hw_enforced_; }
+    AuthorizationSet& sw_enforced() { return sw_enforced_; }
+
+    const KeymasterKeyBlob& key_material() const { return key_material_; }
+    KeymasterKeyBlob& key_material() { return key_material_; }
+
+    const KeyFactory* key_factory() const { return key_factory_; }
+    const KeyFactory*& key_factory() { return key_factory_; }
+  protected:
+    Key(AuthorizationSet&& hw_enforced, AuthorizationSet&& sw_enforced,
+        const KeyFactory* key_factory)
+        : hw_enforced_(move(hw_enforced)), sw_enforced_(move(sw_enforced)),
+          key_factory_(key_factory){}
 
   protected:
-    Key(const AuthorizationSet& hw_enforced, const AuthorizationSet& sw_enforced,
-        keymaster_error_t* error) {
-        assert(error);
-        authorizations_.push_back(hw_enforced);
-        authorizations_.push_back(sw_enforced);
-        *error = KM_ERROR_OK;
-        if (authorizations_.is_valid() != AuthorizationSet::OK)
-            *error = KM_ERROR_MEMORY_ALLOCATION_FAILED;
-    }
-
-  private:
-    AuthorizationSet authorizations_;
+    AuthorizationSet hw_enforced_;
+    AuthorizationSet sw_enforced_;
+    KeymasterKeyBlob key_material_;
+    const KeyFactory* key_factory_;
 };
 
 }  // namespace keymaster

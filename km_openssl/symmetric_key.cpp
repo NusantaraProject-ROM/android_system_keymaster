@@ -106,35 +106,13 @@ SymmetricKeyFactory::SupportedImportFormats(size_t* format_count) const {
     return supported_import_formats;
 }
 
-SymmetricKey::SymmetricKey(const KeymasterKeyBlob& key_material,
-                           const AuthorizationSet& hw_enforced, const AuthorizationSet& sw_enforced,
-                           keymaster_error_t* error)
-    : Key(hw_enforced, sw_enforced, error) {
-    if (*error != KM_ERROR_OK)
-        return;
-
-    uint8_t* tmp = dup_buffer(key_material.key_material, key_material.key_material_size);
-    if (tmp) {
-        key_data_.reset(tmp);
-        key_data_size_ = key_material.key_material_size;
-        *error = KM_ERROR_OK;
-    } else {
-        *error = KM_ERROR_MEMORY_ALLOCATION_FAILED;
-    }
+SymmetricKey::SymmetricKey(KeymasterKeyBlob&& key_material,
+                           AuthorizationSet&& hw_enforced, AuthorizationSet&& sw_enforced,
+                           const KeyFactory* key_factory)
+    : Key(move(hw_enforced), move(sw_enforced), key_factory) {
+    key_material_ = move(key_material);
 }
 
-SymmetricKey::~SymmetricKey() {
-    memset_s(key_data_.get(), 0, key_data_size_);
-}
-
-keymaster_error_t SymmetricKey::key_material(UniquePtr<uint8_t[]>* key_material,
-                                             size_t* size) const {
-    *size = key_data_size_;
-    key_material->reset(new (std::nothrow) uint8_t[*size]);
-    if (!key_material->get())
-        return KM_ERROR_MEMORY_ALLOCATION_FAILED;
-    memcpy(key_material->get(), key_data_.get(), *size);
-    return KM_ERROR_OK;
-}
+SymmetricKey::~SymmetricKey() {}
 
 }  // namespace keymaster

@@ -51,10 +51,10 @@ class EcdsaKeymaster1KeyFactory : public EcKeyFactory {
                                 KeymasterKeyBlob* output_key_blob, AuthorizationSet* hw_enforced,
                                 AuthorizationSet* sw_enforced) const override;
 
-    keymaster_error_t LoadKey(const KeymasterKeyBlob& key_material,
+    keymaster_error_t LoadKey(KeymasterKeyBlob&& key_material,
                               const AuthorizationSet& additional_params,
-                              const AuthorizationSet& hw_enforced,
-                              const AuthorizationSet& sw_enforced,
+                              AuthorizationSet&& hw_enforced,
+                              AuthorizationSet&& sw_enforced,
                               UniquePtr<Key>* key) const override;
 
     OperationFactory* GetOperationFactory(keymaster_purpose_t purpose) const override;
@@ -68,9 +68,9 @@ class EcdsaKeymaster1KeyFactory : public EcKeyFactory {
 
 class EcdsaKeymaster1Key : public EcKey {
   public:
-    EcdsaKeymaster1Key(EC_KEY* ecdsa_key, const AuthorizationSet& hw_enforced,
-                       const AuthorizationSet& sw_enforced, keymaster_error_t* error)
-        : EcKey(ecdsa_key, hw_enforced, sw_enforced, error) {}
+    EcdsaKeymaster1Key(EC_KEY* ecdsa_key, AuthorizationSet&& hw_enforced,
+                       AuthorizationSet&& sw_enforced, const KeyFactory* key_factory)
+        : EcKey(ecdsa_key, move(hw_enforced), move(sw_enforced), key_factory) {}
 };
 
 }  // namespace keymaster

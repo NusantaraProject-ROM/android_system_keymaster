@@ -50,7 +50,7 @@ inline bool allows_padding(keymaster_block_mode_t block_mode) {
 }
 
 static keymaster_error_t GetAndValidateGcmTagLength(const AuthorizationSet& begin_params,
-                                                    const AuthorizationSet& key_params,
+                                                    const AuthProxy& key_params,
                                                     size_t* tag_length) {
     uint32_t tag_length_bits;
     if (!begin_params.GetTagValue(TAG_MAC_LENGTH, &tag_length_bits)) {
@@ -82,7 +82,7 @@ OperationPtr AesOperationFactory::CreateOperation(const Key& key,
     *error = KM_ERROR_OK;
     const SymmetricKey* symmetric_key = static_cast<const SymmetricKey*>(&key);
 
-    switch (symmetric_key->key_data_size()) {
+    switch (symmetric_key->key_material().key_material_size) {
     case 16:
     case 24:
     case 32:
@@ -132,12 +132,14 @@ OperationPtr AesOperationFactory::CreateOperation(const Key& key,
     case KM_PURPOSE_ENCRYPT:
         op.reset(new (std::nothrow)
             AesEvpEncryptOperation(block_mode, padding, caller_nonce, tag_length,
-                                   symmetric_key->key_data(), symmetric_key->key_data_size()));
+                                   symmetric_key->key_material().key_material,
+                                   symmetric_key->key_material().key_material_size));
         break;
     case KM_PURPOSE_DECRYPT:
         op.reset(new (std::nothrow)
-            AesEvpDecryptOperation(block_mode, padding, tag_length, symmetric_key->key_data(),
-                                   symmetric_key->key_data_size()));
+            AesEvpDecryptOperation(block_mode, padding, tag_length,
+                                   symmetric_key->key_material().key_material,
+                                   symmetric_key->key_material().key_material_size));
         break;
     default:
         *error = KM_ERROR_UNSUPPORTED_PURPOSE;

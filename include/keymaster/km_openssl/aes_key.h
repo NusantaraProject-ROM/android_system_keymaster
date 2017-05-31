@@ -34,10 +34,10 @@ class AesKeyFactory : public SymmetricKeyFactory {
 
     keymaster_algorithm_t registry_key() const { return KM_ALGORITHM_AES; }
 
-    keymaster_error_t LoadKey(const KeymasterKeyBlob& key_material,
+    keymaster_error_t LoadKey(KeymasterKeyBlob&& key_material,
                               const AuthorizationSet& additional_params,
-                              const AuthorizationSet& hw_enforced,
-                              const AuthorizationSet& sw_enforced,
+                              AuthorizationSet&& hw_enforced,
+                              AuthorizationSet&& sw_enforced,
                               UniquePtr<Key>* key) const override;
 
     OperationFactory* GetOperationFactory(keymaster_purpose_t purpose) const override;
@@ -52,9 +52,10 @@ class AesKeyFactory : public SymmetricKeyFactory {
 
 class AesKey : public SymmetricKey {
   public:
-    AesKey(const KeymasterKeyBlob& key_material, const AuthorizationSet& hw_enforced,
-           const AuthorizationSet& sw_enforced, keymaster_error_t* error)
-        : SymmetricKey(key_material, hw_enforced, sw_enforced, error) {}
+    AesKey(KeymasterKeyBlob&& key_material, AuthorizationSet&& hw_enforced,
+           AuthorizationSet&& sw_enforced,
+           const KeyFactory* key_factory)
+        : SymmetricKey(move(key_material), move(hw_enforced), move(sw_enforced), key_factory) {}
 };
 
 }  // namespace keymaster

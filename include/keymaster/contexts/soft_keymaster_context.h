@@ -75,16 +75,13 @@ class SoftKeymasterContext: public KeymasterContext, SoftwareKeyBlobMaker, Softw
                                      KeymasterKeyBlob* upgraded_key) const override;
     keymaster_error_t ParseKeyBlob(const KeymasterKeyBlob& blob,
                                    const AuthorizationSet& additional_params,
-                                   KeymasterKeyBlob* key_material, AuthorizationSet* hw_enforced,
-                                   AuthorizationSet* sw_enforced) const override;
+                                   UniquePtr<Key>* key) const override;
     keymaster_error_t DeleteKey(const KeymasterKeyBlob& blob) const override;
     keymaster_error_t DeleteAllKeys() const override;
     keymaster_error_t AddRngEntropy(const uint8_t* buf, size_t length) const override;
 
     keymaster_error_t GenerateAttestation(const Key& key,
                                           const AuthorizationSet& attest_params,
-                                          const AuthorizationSet& tee_enforced,
-                                          const AuthorizationSet& sw_enforced,
                                           CertChainPtr* cert_chain) const override;
 
 

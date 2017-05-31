@@ -41,6 +41,7 @@
 #include <keymaster/km_openssl/openssl_utils.h>
 #include <keymaster/contexts/soft_keymaster_context.h>
 #include <keymaster/soft_keymaster_logger.h>
+#include <keymaster/key.h>
 
 
 struct keystore_module soft_keymaster1_device_module = {
@@ -1212,15 +1213,12 @@ keymaster_error_t SoftKeymasterDevice::begin(const keymaster1_device_t* dev,
     if (km1_dev) {
         AuthorizationSet in_params_set(*in_params);
 
-        KeymasterKeyBlob key_material;
-        AuthorizationSet hw_enforced;
-        AuthorizationSet sw_enforced;
-        skdev->context_->ParseKeyBlob(KeymasterKeyBlob(*key), in_params_set, &key_material,
-                                      &hw_enforced, &sw_enforced);
+        UniquePtr<Key> akmKey; // android keymaster key
+        skdev->context_->ParseKeyBlob(KeymasterKeyBlob(*key), in_params_set, &akmKey);
 
         keymaster_algorithm_t algorithm = KM_ALGORITHM_AES;
-        if (!hw_enforced.GetTagValue(TAG_ALGORITHM, &algorithm) &&
-            !sw_enforced.GetTagValue(TAG_ALGORITHM, &algorithm)) {
+        if (!akmKey->hw_enforced().GetTagValue(TAG_ALGORITHM, &algorithm) &&
+            !akmKey->sw_enforced().GetTagValue(TAG_ALGORITHM, &algorithm)) {
             return KM_ERROR_INVALID_KEY_BLOB;
         }
 
@@ -1228,8 +1226,8 @@ keymaster_error_t SoftKeymasterDevice::begin(const keymaster1_device_t* dev,
             // Because HMAC keys can have only one digest, in_params_set doesn't contain it.  We
             // need to get the digest from the key and add it to in_params_set.
             keymaster_digest_t digest;
-            if (!hw_enforced.GetTagValue(TAG_DIGEST, &digest) &&
-                !sw_enforced.GetTagValue(TAG_DIGEST, &digest)) {
+            if (!akmKey->hw_enforced().GetTagValue(TAG_DIGEST, &digest) &&
+                !akmKey->sw_enforced().GetTagValue(TAG_DIGEST, &digest)) {
                 return KM_ERROR_INVALID_KEY_BLOB;
             }
             in_params_set.push_back(TAG_DIGEST, digest);

@@ -301,29 +301,28 @@ keymaster_error_t SetKeyBlobAuthorizations(const AuthorizationSet& key_descripti
 }
 
 
-keymaster_error_t UpgradeSoftKeyBlob(const uint32_t os_version, const uint32_t os_patchlevel,
-                                     const AuthorizationSet& upgrade_params,
-                                     const KeymasterKeyBlob& key_material,
-                                     AuthorizationSet* hw_enforced, AuthorizationSet* sw_enforced,
-                                     KeymasterKeyBlob* upgraded_key) {
+keymaster_error_t UpgradeSoftKeyBlob(const UniquePtr<Key>& key,
+                                 const uint32_t os_version, const uint32_t os_patchlevel,
+                                 const AuthorizationSet& upgrade_params,
+                                 KeymasterKeyBlob* upgraded_key) {
     bool set_changed = false;
 
     if (os_version == 0) {
         // We need to allow "upgrading" OS version to zero, to support upgrading from proper
         // numbered releases to unnumbered development and preview releases.
 
-        int key_os_version_pos = sw_enforced->find(TAG_OS_VERSION);
+        int key_os_version_pos = key->sw_enforced().find(TAG_OS_VERSION);
         if (key_os_version_pos != -1) {
-            uint32_t key_os_version = (*sw_enforced)[key_os_version_pos].integer;
+            uint32_t key_os_version = key->sw_enforced()[key_os_version_pos].integer;
             if (key_os_version != 0) {
-                (*sw_enforced)[key_os_version_pos].integer = os_version;
+                key->sw_enforced()[key_os_version_pos].integer = os_version;
                 set_changed = true;
             }
         }
     }
 
-    if (!UpgradeIntegerTag(TAG_OS_VERSION, os_version, sw_enforced, &set_changed) ||
-        !UpgradeIntegerTag(TAG_OS_PATCHLEVEL, os_patchlevel, sw_enforced, &set_changed))
+    if (!UpgradeIntegerTag(TAG_OS_VERSION, os_version, &key->sw_enforced(), &set_changed) ||
+        !UpgradeIntegerTag(TAG_OS_PATCHLEVEL, os_patchlevel, &key->sw_enforced(), &set_changed))
         // One of the version fields would have been a downgrade. Not allowed.
         return KM_ERROR_INVALID_ARGUMENT;
 
@@ -335,8 +334,8 @@ keymaster_error_t UpgradeSoftKeyBlob(const uint32_t os_version, const uint32_t o
     auto error = BuildHiddenAuthorizations(upgrade_params, &hidden, softwareRootOfTrust);
     if (error != KM_ERROR_OK)
         return error;
-    return SerializeIntegrityAssuredBlob(key_material, hidden, *hw_enforced,
-                                         *sw_enforced, upgraded_key);
+    return SerializeIntegrityAssuredBlob(key->key_material(), hidden, key->hw_enforced(),
+                                         key->sw_enforced(), upgraded_key);
 }
 
 } // namespace keymaster

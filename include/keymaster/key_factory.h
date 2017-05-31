@@ -48,10 +48,10 @@ class KeyFactory {
                                         AuthorizationSet* hw_enforced,
                                         AuthorizationSet* sw_enforced) const = 0;
 
-    virtual keymaster_error_t LoadKey(const KeymasterKeyBlob& key_material,
+    virtual keymaster_error_t LoadKey(KeymasterKeyBlob&& key_material,
                                       const AuthorizationSet& additional_params,
-                                      const AuthorizationSet& hw_enforced,
-                                      const AuthorizationSet& sw_enforced,
+                                      AuthorizationSet&& hw_enforced,
+                                      AuthorizationSet&& sw_enforced,
                                       UniquePtr<Key>* key) const = 0;
 
     virtual OperationFactory* GetOperationFactory(keymaster_purpose_t purpose) const = 0;

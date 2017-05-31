@@ -97,27 +97,27 @@ keymaster_error_t EcdsaKeymaster0KeyFactory::ImportKey(
                                      output_key_blob, hw_enforced, sw_enforced);
 }
 
-keymaster_error_t EcdsaKeymaster0KeyFactory::LoadKey(const KeymasterKeyBlob& key_material,
+keymaster_error_t EcdsaKeymaster0KeyFactory::LoadKey(KeymasterKeyBlob&& key_material,
                                                      const AuthorizationSet& additional_params,
-                                                     const AuthorizationSet& hw_enforced,
-                                                     const AuthorizationSet& sw_enforced,
+                                                     AuthorizationSet&& hw_enforced,
+                                                     AuthorizationSet&& sw_enforced,
                                                      UniquePtr<Key>* key) const {
     if (!key)
         return KM_ERROR_OUTPUT_PARAMETER_NULL;
 
     if (sw_enforced.GetTagCount(TAG_ALGORITHM) == 1)
-        return super::LoadKey(key_material, additional_params, hw_enforced, sw_enforced, key);
+        return super::LoadKey(move(key_material), additional_params, move(hw_enforced), move(sw_enforced), key);
 
     unique_ptr<EC_KEY, EC_KEY_Delete> ec_key(engine_->BlobToEcKey(key_material));
     if (!ec_key)
         return KM_ERROR_UNKNOWN_ERROR;
 
-    keymaster_error_t error;
     key->reset(new (std::nothrow)
-                   EcKeymaster0Key(ec_key.release(), hw_enforced, sw_enforced, &error));
-    if (error != KM_ERROR_OK)
-        return error;
+                   EcKeymaster0Key(ec_key.release(), move(hw_enforced), move(sw_enforced), this));
+    if (!(*key))
+        return KM_ERROR_MEMORY_ALLOCATION_FAILED;
 
+    (*key)->key_material() = move(key_material);
     return KM_ERROR_OK;
 }
 

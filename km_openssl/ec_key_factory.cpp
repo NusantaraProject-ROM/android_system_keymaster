@@ -239,14 +239,12 @@ EC_GROUP* EcKeyFactory::ChooseGroup(keymaster_ec_curve_t ec_curve) {
     }
 }
 
-keymaster_error_t EcKeyFactory::CreateEmptyKey(const AuthorizationSet& hw_enforced,
-                                               const AuthorizationSet& sw_enforced,
+keymaster_error_t EcKeyFactory::CreateEmptyKey(AuthorizationSet&& hw_enforced,
+                                               AuthorizationSet&& sw_enforced,
                                                UniquePtr<AsymmetricKey>* key) const {
-    keymaster_error_t error;
-    key->reset(new (std::nothrow) EcKey(hw_enforced, sw_enforced, &error));
-    if (!key->get())
-        error = KM_ERROR_MEMORY_ALLOCATION_FAILED;
-    return error;
+    key->reset(new (std::nothrow) EcKey(move(hw_enforced), move(sw_enforced), this));
+    if (!(*key)) return KM_ERROR_MEMORY_ALLOCATION_FAILED;
+    return KM_ERROR_OK;
 }
 
 }  // namespace keymaster

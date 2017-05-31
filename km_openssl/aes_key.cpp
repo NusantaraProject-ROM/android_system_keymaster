@@ -41,10 +41,10 @@ OperationFactory* AesKeyFactory::GetOperationFactory(keymaster_purpose_t purpose
     }
 }
 
-keymaster_error_t AesKeyFactory::LoadKey(const KeymasterKeyBlob& key_material,
+keymaster_error_t AesKeyFactory::LoadKey(KeymasterKeyBlob&& key_material,
                                          const AuthorizationSet& /* additional_params */,
-                                         const AuthorizationSet& hw_enforced,
-                                         const AuthorizationSet& sw_enforced,
+                                         AuthorizationSet&& hw_enforced,
+                                         AuthorizationSet&& sw_enforced,
                                          UniquePtr<Key>* key) const {
     if (!key)
         return KM_ERROR_OUTPUT_PARAMETER_NULL;
@@ -62,7 +62,8 @@ keymaster_error_t AesKeyFactory::LoadKey(const KeymasterKeyBlob& key_material,
     }
 
     keymaster_error_t error = KM_ERROR_OK;
-    key->reset(new (std::nothrow) AesKey(key_material, hw_enforced, sw_enforced, &error));
+    key->reset(new (std::nothrow) AesKey(move(key_material), move(hw_enforced), move(sw_enforced),
+                                         this));
     if (!key->get())
         error = KM_ERROR_MEMORY_ALLOCATION_FAILED;
     return error;

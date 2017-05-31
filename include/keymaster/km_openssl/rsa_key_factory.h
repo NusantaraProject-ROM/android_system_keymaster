@@ -40,8 +40,8 @@ class RsaKeyFactory : public AsymmetricKeyFactory, public SoftKeyFactoryMixin {
                                 KeymasterKeyBlob* output_key_blob, AuthorizationSet* hw_enforced,
                                 AuthorizationSet* sw_enforced) const override;
 
-    keymaster_error_t CreateEmptyKey(const AuthorizationSet& hw_enforced,
-                                     const AuthorizationSet& sw_enforced,
+    keymaster_error_t CreateEmptyKey(AuthorizationSet&& hw_enforced,
+                                     AuthorizationSet&& sw_enforced,
                                      UniquePtr<AsymmetricKey>* key) const override;
 
     OperationFactory* GetOperationFactory(keymaster_purpose_t purpose) const override;

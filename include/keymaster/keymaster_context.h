@@ -105,9 +105,7 @@ class KeymasterContext {
      */
     virtual keymaster_error_t ParseKeyBlob(const KeymasterKeyBlob& blob,
                                            const AuthorizationSet& additional_params,
-                                           KeymasterKeyBlob* key_material,
-                                           AuthorizationSet* hw_enforced,
-                                           AuthorizationSet* sw_enforced) const = 0;
+                                           UniquePtr<Key>* key) const = 0;
 
     /**
      * Take whatever environment-specific action is appropriate (if any) to delete the specified
@@ -138,8 +136,6 @@ class KeymasterContext {
 
     virtual keymaster_error_t GenerateAttestation(const Key& key,
                                                   const AuthorizationSet& attest_params,
-                                                  const AuthorizationSet& tee_enforced,
-                                                  const AuthorizationSet& sw_enforced,
                                                   CertChainPtr* cert_chain) const = 0;
 
   private:

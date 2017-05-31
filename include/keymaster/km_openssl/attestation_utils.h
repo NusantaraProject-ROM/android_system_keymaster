@@ -33,8 +33,7 @@ class AsymmetricKey;
 
 
 keymaster_error_t generate_attestation(const AsymmetricKey& key,
-        const AuthorizationSet& attest_params, const AuthorizationSet& tee_enforced,
-        const AuthorizationSet& sw_enforced, const keymaster_cert_chain_t& attestation_chain,
+        const AuthorizationSet& attest_params, const keymaster_cert_chain_t& attestation_chain,
         const keymaster_key_blob_t& attestation_signing_key,
         const AttestationRecordContext& context, CertChainPtr* cert_chain_out);
 

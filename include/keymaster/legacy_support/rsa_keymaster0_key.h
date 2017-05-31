@@ -47,10 +47,10 @@ class RsaKeymaster0KeyFactory : public RsaKeyFactory {
                                 KeymasterKeyBlob* output_key_blob, AuthorizationSet* hw_enforced,
                                 AuthorizationSet* sw_enforced) const override;
 
-    keymaster_error_t LoadKey(const KeymasterKeyBlob& key_material,
+    keymaster_error_t LoadKey(KeymasterKeyBlob&& key_material,
                               const AuthorizationSet& additional_params,
-                              const AuthorizationSet& hw_enforced,
-                              const AuthorizationSet& sw_enforced,
+                              AuthorizationSet&& hw_enforced,
+                              AuthorizationSet&& sw_enforced,
                               UniquePtr<Key>* key) const override;
 
   private:
@@ -59,9 +59,10 @@ class RsaKeymaster0KeyFactory : public RsaKeyFactory {
 
 class RsaKeymaster0Key : public RsaKey {
   public:
-    RsaKeymaster0Key(RSA* rsa_key, const AuthorizationSet& hw_enforced,
-                     const AuthorizationSet& sw_enforced, keymaster_error_t* error)
-        : RsaKey(rsa_key, hw_enforced, sw_enforced, error) {}
+    RsaKeymaster0Key(RSA* rsa_key, AuthorizationSet&& hw_enforced,
+                     AuthorizationSet&& sw_enforced,
+                     const KeyFactory* key_factory)
+        : RsaKey(rsa_key, move(hw_enforced), move(sw_enforced), key_factory) {}
 };
 
 }  // namespace keymaster

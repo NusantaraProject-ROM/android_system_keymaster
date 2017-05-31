@@ -171,14 +171,12 @@ keymaster_error_t RsaKeyFactory::UpdateImportKeyDescription(const AuthorizationS
     return KM_ERROR_OK;
 }
 
-keymaster_error_t RsaKeyFactory::CreateEmptyKey(const AuthorizationSet& hw_enforced,
-                                                const AuthorizationSet& sw_enforced,
+keymaster_error_t RsaKeyFactory::CreateEmptyKey(AuthorizationSet&& hw_enforced,
+                                                AuthorizationSet&& sw_enforced,
                                                 UniquePtr<AsymmetricKey>* key) const {
-    keymaster_error_t error;
-    key->reset(new (std::nothrow) RsaKey(hw_enforced, sw_enforced, &error));
-    if (!key->get())
-        error = KM_ERROR_MEMORY_ALLOCATION_FAILED;
-    return error;
+    key->reset(new (std::nothrow) RsaKey(move(hw_enforced), move(sw_enforced), this));
+    if (!(*key)) return KM_ERROR_MEMORY_ALLOCATION_FAILED;
+    return KM_ERROR_OK;
 }
 
 }  // namespace keymaster

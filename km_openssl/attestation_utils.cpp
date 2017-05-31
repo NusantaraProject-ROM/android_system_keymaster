@@ -297,8 +297,7 @@ bool add_attestation_extension(const AuthorizationSet& attest_params,
 } // anonymous namespace
 
 keymaster_error_t generate_attestation(const AsymmetricKey& key,
-        const AuthorizationSet& attest_params, const AuthorizationSet& tee_enforced,
-        const AuthorizationSet& sw_enforced, const keymaster_cert_chain_t& attestation_chain,
+        const AuthorizationSet& attest_params, const keymaster_cert_chain_t& attestation_chain,
         const keymaster_key_blob_t& attestation_signing_key,
         const AttestationRecordContext& context, CertChainPtr* cert_chain_out) {
 
@@ -306,8 +305,8 @@ keymaster_error_t generate_attestation(const AsymmetricKey& key,
         return KM_ERROR_UNEXPECTED_NULL_POINTER;
 
     keymaster_algorithm_t sign_algorithm;
-    if ((!sw_enforced.GetTagValue(TAG_ALGORITHM, &sign_algorithm) &&
-         !tee_enforced.GetTagValue(TAG_ALGORITHM, &sign_algorithm)))
+    if ((!key.sw_enforced().GetTagValue(TAG_ALGORITHM, &sign_algorithm) &&
+         !key.hw_enforced().GetTagValue(TAG_ALGORITHM, &sign_algorithm)))
         return KM_ERROR_UNKNOWN_ERROR;
 
     EVP_PKEY_Ptr pkey(EVP_PKEY_new());
@@ -352,7 +351,7 @@ keymaster_error_t generate_attestation(const AsymmetricKey& key,
         !X509_set_notAfter(certificate.get(), notAfter.get() /* Don't release; copied */))
         return TranslateLastOpenSslError();
 
-    keymaster_error_t error = add_key_usage_extension(tee_enforced, sw_enforced, certificate.get());
+    keymaster_error_t error = add_key_usage_extension(key.hw_enforced(), key.sw_enforced(), certificate.get());
     if (error != KM_ERROR_OK) {
         return error;
     }
@@ -368,7 +367,7 @@ keymaster_error_t generate_attestation(const AsymmetricKey& key,
     if (!sign_key.get()) return TranslateLastOpenSslError();
 
     if (!add_public_key(pkey.get(), certificate.get(), &error) ||
-        !add_attestation_extension(attest_params, tee_enforced, sw_enforced,
+        !add_attestation_extension(attest_params, key.hw_enforced(), key.sw_enforced(),
                                    context, certificate.get(), &error))
         return error;
 

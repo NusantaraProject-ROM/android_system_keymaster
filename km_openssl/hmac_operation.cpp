@@ -68,7 +68,8 @@ OperationPtr HmacOperationFactory::CreateOperation(const Key& key,
 
     const SymmetricKey* symmetric_key = static_cast<const SymmetricKey*>(&key);
     UniquePtr<HmacOperation> op(new (std::nothrow) HmacOperation(
-        purpose(), symmetric_key->key_data(), symmetric_key->key_data_size(), digest,
+        purpose(), symmetric_key->key_material().key_material,
+        symmetric_key->key_material().key_material_size, digest,
         mac_length_bits / 8, min_mac_length_bits / 8));
     if (!op.get())
         *error = KM_ERROR_MEMORY_ALLOCATION_FAILED;

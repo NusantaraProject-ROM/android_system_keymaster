@@ -28,9 +28,9 @@ class EcdsaOperationFactory;
 
 class EcKey : public AsymmetricKey {
   public:
-    EcKey(const AuthorizationSet& hw_enforced, const AuthorizationSet& sw_enforced,
-          keymaster_error_t* error)
-        : AsymmetricKey(hw_enforced, sw_enforced, error) {}
+    EcKey(AuthorizationSet&& hw_enforced, AuthorizationSet&& sw_enforced,
+          const KeyFactory* key_factory)
+        : AsymmetricKey(move(hw_enforced), move(sw_enforced), key_factory) {}
     virtual ~EcKey() {}
 
     bool InternalToEvp(EVP_PKEY* pkey) const override;
@@ -39,9 +39,9 @@ class EcKey : public AsymmetricKey {
     EC_KEY* key() const { return ec_key_.get(); }
 
   protected:
-    EcKey(EC_KEY* ec_key, const AuthorizationSet& hw_enforced, const AuthorizationSet& sw_enforced,
-          keymaster_error_t* error)
-        : AsymmetricKey(hw_enforced, sw_enforced, error), ec_key_(ec_key) {}
+    EcKey(EC_KEY* ec_key, AuthorizationSet&& hw_enforced, AuthorizationSet&& sw_enforced,
+          const KeyFactory* key_factory)
+        : AsymmetricKey(move(hw_enforced), move(sw_enforced), key_factory), ec_key_(ec_key) {}
 
   private:
     EC_KEY_Ptr ec_key_;

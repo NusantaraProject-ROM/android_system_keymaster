@@ -25,9 +25,9 @@ namespace keymaster {
 
 class AsymmetricKey : public Key {
   public:
-    AsymmetricKey(const AuthorizationSet& hw_enforced, const AuthorizationSet& sw_enforced,
-                  keymaster_error_t* error)
-        : Key(hw_enforced, sw_enforced, error) {}
+    AsymmetricKey(AuthorizationSet&& hw_enforced, AuthorizationSet&& sw_enforced,
+                  const KeyFactory* key_factory)
+        : Key(move(hw_enforced), move(sw_enforced), key_factory) {}
     virtual ~AsymmetricKey() {}
 
     keymaster_error_t formatted_key_material(keymaster_key_format_t format,

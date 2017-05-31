@@ -25,9 +25,9 @@ namespace keymaster {
 
 class RsaKey : public AsymmetricKey {
   public:
-    RsaKey(const AuthorizationSet& hw_enforced, const AuthorizationSet& sw_enforced,
-           keymaster_error_t* error)
-        : AsymmetricKey(hw_enforced, sw_enforced, error) {}
+    RsaKey(AuthorizationSet&& hw_enforced, AuthorizationSet&& sw_enforced,
+           const KeyFactory* key_factory)
+        : AsymmetricKey(move(hw_enforced), move(sw_enforced), key_factory) {}
 
     bool InternalToEvp(EVP_PKEY* pkey) const override;
     bool EvpToInternal(const EVP_PKEY* pkey) override;
@@ -42,9 +42,9 @@ class RsaKey : public AsymmetricKey {
     RSA* key() const { return rsa_key_.get(); }
 
   protected:
-    RsaKey(RSA* rsa, const AuthorizationSet& hw_enforced, const AuthorizationSet& sw_enforced,
-           keymaster_error_t* error)
-        : AsymmetricKey(hw_enforced, sw_enforced, error), rsa_key_(rsa) {}
+    RsaKey(RSA* rsa, AuthorizationSet&& hw_enforced, AuthorizationSet&& sw_enforced,
+           const KeyFactory* key_factory)
+        : AsymmetricKey(move(hw_enforced), move(sw_enforced), key_factory), rsa_key_(rsa) {}
 
   private:
     UniquePtr<RSA, RSA_Delete> rsa_key_;
