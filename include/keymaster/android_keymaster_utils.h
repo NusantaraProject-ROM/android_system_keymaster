@@ -281,6 +281,14 @@ struct TKeymasterBlob : public BlobType {
             accessBlobSize(this) = accessBlobSize(&blob);
     }
 
+    template<size_t N>
+    explicit TKeymasterBlob(const uint8_t (&data)[N]) {
+        accessBlobSize(this) = 0;
+        accessBlobData(this) = dup_buffer(data, N);
+        if (accessBlobData(this))
+            accessBlobSize(this) = N;
+    }
+
     TKeymasterBlob(const TKeymasterBlob& blob) {
         accessBlobSize(this) = 0;
         accessBlobData(this) = dup_buffer(accessBlobData(&blob), accessBlobSize(&blob));

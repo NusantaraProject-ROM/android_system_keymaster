@@ -137,6 +137,7 @@ cc_library_shared {
         "km_openssl/kdf.cpp",
         "km_openssl/nist_curve_key_exchange.cpp",
         "key_blob_utils/integrity_assured_key_blob.cpp",
+        "key_blob_utils/software_keyblobs.cpp",
     ],
 
     shared_libs: [

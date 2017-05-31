@@ -126,7 +126,8 @@ CPPSRCS=\
 	km_openssl/symmetric_key.cpp \
 	km_openssl/software_random_source.cpp \
 	contexts/soft_attestation_cert.cpp \
-	km_openssl/attestation_utils.cpp
+	km_openssl/attestation_utils.cpp \
+	key_blob_utils/software_keyblobs.cpp
 
 CCSRCS=$(GTEST)/src/gtest-all.cc
 CSRCS=key_blob_utils/ocb.c
@@ -360,6 +361,7 @@ tests/android_keymaster_test: tests/android_keymaster_test.o \
 	km_openssl/software_random_source.o \
 	contexts/soft_attestation_cert.o \
 	km_openssl/attestation_utils.o \
+	key_blob_utils/software_keyblobs.o \
 	$(BASE)/system/security/softkeymaster/keymaster_openssl.o \
 	$(BASE)/system/security/keystore/keyblob_utils.o \
 	$(GTEST_OBJS)

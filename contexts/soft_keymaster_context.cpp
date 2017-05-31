@@ -24,6 +24,7 @@
 #include <keymaster/key_blob_utils/auth_encrypted_key_blob.h>
 #include <keymaster/key_blob_utils/integrity_assured_key_blob.h>
 #include <keymaster/key_blob_utils/ocb_utils.h>
+#include <keymaster/key_blob_utils/software_keyblobs.h>
 #include <keymaster/legacy_support/ec_keymaster0_key.h>
 #include <keymaster/legacy_support/ec_keymaster1_key.h>
 #include <keymaster/legacy_support/keymaster0_engine.h>
@@ -43,29 +44,9 @@ using std::unique_ptr;
 namespace keymaster {
 
 namespace {
-static uint8_t master_key_bytes[AES_BLOCK_SIZE] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-const KeymasterKeyBlob MASTER_KEY(master_key_bytes, array_length(master_key_bytes));
 
-bool UpgradeIntegerTag(keymaster_tag_t tag, uint32_t value, AuthorizationSet* set,
-                       bool* set_changed) {
-    int index = set->find(tag);
-    if (index == -1) {
-        keymaster_key_param_t param;
-        param.tag = tag;
-        param.integer = value;
-        set->push_back(param);
-        *set_changed = true;
-        return true;
-    }
-
-    if (set->params[index].integer > value)
-        return false;
-
-    if (set->params[index].integer != value) {
-        set->params[index].integer = value;
-        *set_changed = true;
-    }
-    return true;
+KeymasterBlob string2Blob(const std::string& str) {
+    return KeymasterBlob(reinterpret_cast<const uint8_t*>(str.data()), str.size());
 }
 
 }  // anonymous namespace
@@ -73,7 +54,7 @@ bool UpgradeIntegerTag(keymaster_tag_t tag, uint32_t value, AuthorizationSet* se
 SoftKeymasterContext::SoftKeymasterContext(const std::string& root_of_trust)
     : rsa_factory_(new RsaKeyFactory(this)), ec_factory_(new EcKeyFactory(this)),
       aes_factory_(new AesKeyFactory(this, this)), hmac_factory_(new HmacKeyFactory(this, this)),
-      km1_dev_(nullptr), root_of_trust_(root_of_trust), os_version_(0), os_patchlevel_(0) {}
+      km1_dev_(nullptr), root_of_trust_(string2Blob(root_of_trust)), os_version_(0), os_patchlevel_(0) {}
 
 SoftKeymasterContext::~SoftKeymasterContext() {}
 
@@ -219,7 +200,7 @@ keymaster_error_t SoftKeymasterContext::CreateKeyBlob(const AuthorizationSet& ke
         return error;
 
     AuthorizationSet hidden;
-    error = BuildHiddenAuthorizations(key_description, &hidden);
+    error = BuildHiddenAuthorizations(key_description, &hidden, root_of_trust_);
     if (error != KM_ERROR_OK)
         return error;
 
@@ -252,129 +233,9 @@ keymaster_error_t SoftKeymasterContext::UpgradeKeyBlob(const KeymasterKeyBlob& k
     if (km1_dev_ && tee_enforced.Contains(TAG_PURPOSE) && !tee_enforced.Contains(TAG_OS_PATCHLEVEL))
         return KM_ERROR_INVALID_ARGUMENT;
 
-    // Handle cases 1 & 2.
-    bool set_changed = false;
-
-    if (os_version_ == 0) {
-        // We need to allow "upgrading" OS version to zero, to support upgrading from proper
-        // numbered releases to unnumbered development and preview releases.
-
-        int key_os_version_pos = sw_enforced.find(TAG_OS_VERSION);
-        if (key_os_version_pos != -1) {
-            uint32_t key_os_version = sw_enforced[key_os_version_pos].integer;
-            if (key_os_version != 0) {
-                sw_enforced[key_os_version_pos].integer = os_version_;
-                set_changed = true;
-            }
-        }
-    }
-
-    if (!UpgradeIntegerTag(TAG_OS_VERSION, os_version_, &sw_enforced, &set_changed) ||
-        !UpgradeIntegerTag(TAG_OS_PATCHLEVEL, os_patchlevel_, &sw_enforced, &set_changed))
-        // One of the version fields would have been a downgrade. Not allowed.
-        return KM_ERROR_INVALID_ARGUMENT;
-
-    if (!set_changed)
-        // Dont' need an upgrade.
-        return KM_ERROR_OK;
-
-    AuthorizationSet hidden;
-    error = BuildHiddenAuthorizations(upgrade_params, &hidden);
-    if (error != KM_ERROR_OK)
-        return error;
-    return SerializeIntegrityAssuredBlob(key_material, hidden, tee_enforced, sw_enforced,
-                                         upgraded_key);
-}
-
-static keymaster_error_t ParseOcbAuthEncryptedBlob(const KeymasterKeyBlob& blob,
-                                                   const AuthorizationSet& hidden,
-                                                   KeymasterKeyBlob* key_material,
-                                                   AuthorizationSet* hw_enforced,
-                                                   AuthorizationSet* sw_enforced) {
-    Buffer nonce, tag;
-    KeymasterKeyBlob encrypted_key_material;
-    keymaster_error_t error = DeserializeAuthEncryptedBlob(blob, &encrypted_key_material,
-                                                           hw_enforced, sw_enforced, &nonce, &tag);
-    if (error != KM_ERROR_OK)
-        return error;
-
-    if (nonce.available_read() != OCB_NONCE_LENGTH || tag.available_read() != OCB_TAG_LENGTH)
-        return KM_ERROR_INVALID_KEY_BLOB;
-
-    return OcbDecryptKey(*hw_enforced, *sw_enforced, hidden, MASTER_KEY, encrypted_key_material,
-                         nonce, tag, key_material);
-}
-
-// Note: This parsing code in below is from system/security/softkeymaster/keymaster_openssl.cpp's
-// unwrap_key function, modified for the preferred function signature and formatting.  It does some
-// odd things, but they have been left unchanged to avoid breaking compatibility.
-static const uint8_t SOFT_KEY_MAGIC[] = {'P', 'K', '#', '8'};
-keymaster_error_t SoftKeymasterContext::ParseOldSoftkeymasterBlob(
-    const KeymasterKeyBlob& blob, KeymasterKeyBlob* key_material, AuthorizationSet* hw_enforced,
-    AuthorizationSet* sw_enforced) const {
-    long publicLen = 0;
-    long privateLen = 0;
-    const uint8_t* p = blob.key_material;
-    const uint8_t* end = blob.key_material + blob.key_material_size;
-
-    int type = 0;
-    ptrdiff_t min_size =
-        sizeof(SOFT_KEY_MAGIC) + sizeof(type) + sizeof(publicLen) + 1 + sizeof(privateLen) + 1;
-    if (end - p < min_size) {
-        LOG_W("key blob appears to be truncated (if an old SW key)", 0);
-        return KM_ERROR_INVALID_KEY_BLOB;
-    }
-
-    if (memcmp(p, SOFT_KEY_MAGIC, sizeof(SOFT_KEY_MAGIC)) != 0)
-        return KM_ERROR_INVALID_KEY_BLOB;
-    p += sizeof(SOFT_KEY_MAGIC);
-
-    for (size_t i = 0; i < sizeof(type); i++)
-        type = (type << 8) | *p++;
-
-    for (size_t i = 0; i < sizeof(type); i++)
-        publicLen = (publicLen << 8) | *p++;
-
-    if (p + publicLen > end) {
-        LOG_W("public key length encoding error: size=%ld, end=%td", publicLen, end - p);
-        return KM_ERROR_INVALID_KEY_BLOB;
-    }
-    p += publicLen;
-
-    if (end - p < 2) {
-        LOG_W("key blob appears to be truncated (if an old SW key)", 0);
-        return KM_ERROR_INVALID_KEY_BLOB;
-    }
-
-    for (size_t i = 0; i < sizeof(type); i++)
-        privateLen = (privateLen << 8) | *p++;
-
-    if (p + privateLen > end) {
-        LOG_W("private key length encoding error: size=%ld, end=%td", privateLen, end - p);
-        return KM_ERROR_INVALID_KEY_BLOB;
-    }
-
-    // Just to be sure, make sure that the ASN.1 structure parses correctly.  We don't actually use
-    // the EVP_PKEY here.
-    const uint8_t* key_start = p;
-    unique_ptr<EVP_PKEY, EVP_PKEY_Delete> pkey(d2i_PrivateKey(type, nullptr, &p, privateLen));
-    if (pkey.get() == nullptr) {
-        LOG_W("Failed to parse PKCS#8 key material (if old SW key)", 0);
-        return KM_ERROR_INVALID_KEY_BLOB;
-    }
-
-    // All auths go into sw_enforced, including those that would be HW-enforced if we were faking
-    // auths for a HW-backed key.
-    hw_enforced->Clear();
-    keymaster_error_t error = FakeKeyAuthorizations(pkey.get(), sw_enforced, sw_enforced);
-    if (error != KM_ERROR_OK)
-        return error;
-
-    if (!key_material->Reset(privateLen))
-        return KM_ERROR_MEMORY_ALLOCATION_FAILED;
-    memcpy(key_material->writable_data(), key_start, privateLen);
-
-    return KM_ERROR_OK;
+    // Handle case 1 and 2
+    return UpgradeSoftKeyBlob(os_version_, os_patchlevel_, upgrade_params, key_material,
+                              &tee_enforced, &sw_enforced,  upgraded_key);
 }
 
 keymaster_error_t SoftKeymasterContext::ParseKeyBlob(const KeymasterKeyBlob& blob,
@@ -415,7 +276,7 @@ keymaster_error_t SoftKeymasterContext::ParseKeyBlob(const KeymasterKeyBlob& blo
     // keymaster0 hardware.
 
     AuthorizationSet hidden;
-    keymaster_error_t error = BuildHiddenAuthorizations(additional_params, &hidden);
+    keymaster_error_t error = BuildHiddenAuthorizations(additional_params, &hidden, root_of_trust_);
     if (error != KM_ERROR_OK)
         return error;
 
@@ -561,94 +422,6 @@ keymaster_error_t SoftKeymasterContext::ParseKeymaster0HwBlob(const KeymasterKey
 
     return error;
 }
-
-keymaster_error_t SoftKeymasterContext::FakeKeyAuthorizations(EVP_PKEY* pubkey,
-                                                              AuthorizationSet* hw_enforced,
-                                                              AuthorizationSet* sw_enforced) const {
-    hw_enforced->Clear();
-    sw_enforced->Clear();
-
-    switch (EVP_PKEY_type(pubkey->type)) {
-    case EVP_PKEY_RSA: {
-        hw_enforced->push_back(TAG_ALGORITHM, KM_ALGORITHM_RSA);
-        hw_enforced->push_back(TAG_DIGEST, KM_DIGEST_NONE);
-        hw_enforced->push_back(TAG_DIGEST, KM_DIGEST_MD5);
-        hw_enforced->push_back(TAG_DIGEST, KM_DIGEST_SHA1);
-        hw_enforced->push_back(TAG_DIGEST, KM_DIGEST_SHA_2_224);
-        hw_enforced->push_back(TAG_DIGEST, KM_DIGEST_SHA_2_256);
-        hw_enforced->push_back(TAG_DIGEST, KM_DIGEST_SHA_2_384);
-        hw_enforced->push_back(TAG_DIGEST, KM_DIGEST_SHA_2_512);
-        hw_enforced->push_back(TAG_PADDING, KM_PAD_NONE);
-        hw_enforced->push_back(TAG_PADDING, KM_PAD_RSA_PKCS1_1_5_SIGN);
-        hw_enforced->push_back(TAG_PADDING, KM_PAD_RSA_PKCS1_1_5_ENCRYPT);
-        hw_enforced->push_back(TAG_PADDING, KM_PAD_RSA_PSS);
-        hw_enforced->push_back(TAG_PADDING, KM_PAD_RSA_OAEP);
-
-        sw_enforced->push_back(TAG_PURPOSE, KM_PURPOSE_SIGN);
-        sw_enforced->push_back(TAG_PURPOSE, KM_PURPOSE_VERIFY);
-        sw_enforced->push_back(TAG_PURPOSE, KM_PURPOSE_ENCRYPT);
-        sw_enforced->push_back(TAG_PURPOSE, KM_PURPOSE_DECRYPT);
-
-        unique_ptr<RSA, RSA_Delete> rsa(EVP_PKEY_get1_RSA(pubkey));
-        if (!rsa)
-            return TranslateLastOpenSslError();
-        hw_enforced->push_back(TAG_KEY_SIZE, RSA_size(rsa.get()) * 8);
-        uint64_t public_exponent = BN_get_word(rsa->e);
-        if (public_exponent == 0xffffffffL)
-            return KM_ERROR_INVALID_KEY_BLOB;
-        hw_enforced->push_back(TAG_RSA_PUBLIC_EXPONENT, public_exponent);
-        break;
-    }
-
-    case EVP_PKEY_EC: {
-        hw_enforced->push_back(TAG_ALGORITHM, KM_ALGORITHM_RSA);
-        hw_enforced->push_back(TAG_DIGEST, KM_DIGEST_NONE);
-        hw_enforced->push_back(TAG_DIGEST, KM_DIGEST_MD5);
-        hw_enforced->push_back(TAG_DIGEST, KM_DIGEST_SHA1);
-        hw_enforced->push_back(TAG_DIGEST, KM_DIGEST_SHA_2_224);
-        hw_enforced->push_back(TAG_DIGEST, KM_DIGEST_SHA_2_256);
-        hw_enforced->push_back(TAG_DIGEST, KM_DIGEST_SHA_2_384);
-        hw_enforced->push_back(TAG_DIGEST, KM_DIGEST_SHA_2_512);
-
-        sw_enforced->push_back(TAG_PURPOSE, KM_PURPOSE_SIGN);
-        sw_enforced->push_back(TAG_PURPOSE, KM_PURPOSE_VERIFY);
-
-        UniquePtr<EC_KEY, EC_KEY_Delete> ec_key(EVP_PKEY_get1_EC_KEY(pubkey));
-        if (!ec_key.get())
-            return TranslateLastOpenSslError();
-        size_t key_size_bits;
-        keymaster_error_t error =
-            ec_get_group_size(EC_KEY_get0_group(ec_key.get()), &key_size_bits);
-        if (error != KM_ERROR_OK)
-            return error;
-        hw_enforced->push_back(TAG_KEY_SIZE, key_size_bits);
-        break;
-    }
-
-    default:
-        return KM_ERROR_UNSUPPORTED_ALGORITHM;
-    }
-
-    sw_enforced->push_back(TAG_ALL_USERS);
-    sw_enforced->push_back(TAG_NO_AUTH_REQUIRED);
-
-    return KM_ERROR_OK;
-}
-
-keymaster_error_t SoftKeymasterContext::BuildHiddenAuthorizations(const AuthorizationSet& input_set,
-                                                                  AuthorizationSet* hidden) const {
-    keymaster_blob_t entry;
-    if (input_set.GetTagValue(TAG_APPLICATION_ID, &entry))
-        hidden->push_back(TAG_APPLICATION_ID, entry.data, entry.data_length);
-    if (input_set.GetTagValue(TAG_APPLICATION_DATA, &entry))
-        hidden->push_back(TAG_APPLICATION_DATA, entry.data, entry.data_length);
-
-    hidden->push_back(TAG_ROOT_OF_TRUST, reinterpret_cast<const uint8_t*>(root_of_trust_.data()),
-                      root_of_trust_.size());
-
-    return TranslateAuthorizationSetError(hidden->is_valid());
-}
-
 
 keymaster_error_t SoftKeymasterContext::GenerateAttestation(const Key& key,
         const AuthorizationSet& attest_params, const AuthorizationSet& tee_enforced,

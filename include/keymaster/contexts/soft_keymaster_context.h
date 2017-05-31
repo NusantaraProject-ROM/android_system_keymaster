@@ -103,10 +103,6 @@ class SoftKeymasterContext: public KeymasterContext, SoftwareKeyBlobMaker, Softw
     /*********************************************************************************************/
 
   private:
-    keymaster_error_t ParseOldSoftkeymasterBlob(const KeymasterKeyBlob& blob,
-                                                KeymasterKeyBlob* key_material,
-                                                AuthorizationSet* hw_enforced,
-                                                AuthorizationSet* sw_enforced) const;
     keymaster_error_t ParseKeymaster1HwBlob(const KeymasterKeyBlob& blob,
                                             const AuthorizationSet& additional_params,
                                             KeymasterKeyBlob* key_material,
@@ -116,10 +112,6 @@ class SoftKeymasterContext: public KeymasterContext, SoftwareKeyBlobMaker, Softw
                                             KeymasterKeyBlob* key_material,
                                             AuthorizationSet* hw_enforced,
                                             AuthorizationSet* sw_enforced) const;
-    keymaster_error_t FakeKeyAuthorizations(EVP_PKEY* pubkey, AuthorizationSet* hw_enforced,
-                                            AuthorizationSet* sw_enforced) const;
-    keymaster_error_t BuildHiddenAuthorizations(const AuthorizationSet& input_set,
-                                                AuthorizationSet* hidden) const;
 
     std::unique_ptr<Keymaster0Engine> km0_engine_;
     std::unique_ptr<Keymaster1Engine> km1_engine_;
@@ -128,7 +120,7 @@ class SoftKeymasterContext: public KeymasterContext, SoftwareKeyBlobMaker, Softw
     std::unique_ptr<KeyFactory> aes_factory_;
     std::unique_ptr<KeyFactory> hmac_factory_;
     keymaster1_device* km1_dev_;
-    const std::string root_of_trust_;
+    const KeymasterBlob root_of_trust_;
     uint32_t os_version_;
     uint32_t os_patchlevel_;
 };
