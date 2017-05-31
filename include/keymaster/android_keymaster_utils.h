@@ -405,6 +405,15 @@ remove_reference_t<T>&& move(T&& x) {
     return static_cast<remove_reference_t<T>&&>(x);
 }
 
+template<typename T>
+constexpr T&& forward(remove_reference_t<T>& x) {
+    return static_cast<T&&>(x);
+}
+template<typename T>
+constexpr T&& forward(remove_reference_t<T>&& x) {
+    return static_cast<T&&>(x);
+}
+
 }  // namespace keymaster
 
 #endif  // SYSTEM_KEYMASTER_ANDROID_KEYMASTER_UTILS_H_

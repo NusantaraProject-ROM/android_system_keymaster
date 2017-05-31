@@ -22,6 +22,7 @@
 #include <hardware/keymaster_defs.h>
 #include <keymaster/keymaster_tags.h>
 #include <keymaster/serializable.h>
+#include <keymaster/android_keymaster_utils.h>
 
 namespace keymaster {
 
@@ -212,7 +213,7 @@ class AuthorizationSet : public Serializable, public keymaster_key_param_set_t {
     /**
      * Returns the nth element of the set.
      */
-    keymaster_key_param_t operator[](int n) const;
+    const keymaster_key_param_t& operator[](int n) const;
 
     /**
      * Returns true if the set contains at least one instance of \p tag
@@ -611,6 +612,91 @@ inline AuthorizationSetBuilder& AuthorizationSetBuilder::NoDigestOrPadding() {
 inline AuthorizationSetBuilder& AuthorizationSetBuilder::EcbMode() {
     return Authorization(TAG_BLOCK_MODE, KM_MODE_ECB);
 }
+
+class AuthProxyIterator {
+    constexpr static size_t invalid = ~size_t(0);
+public:
+    AuthProxyIterator()
+        : pos_(invalid), auth_set1_(nullptr), auth_set2_(nullptr) {}
+    AuthProxyIterator(const AuthorizationSet& auth_set1, const AuthorizationSet& auth_set2)
+        : pos_(0), auth_set1_(&auth_set1), auth_set2_(&auth_set2) {}
+    AuthProxyIterator(const AuthProxyIterator& rhs)
+        : pos_(rhs.pos_), auth_set1_(rhs.auth_set1_), auth_set2_(rhs.auth_set2_) {}
+    ~AuthProxyIterator() {};
+    AuthProxyIterator& operator=(const AuthProxyIterator& rhs) {
+        if (this != &rhs) {
+            pos_ = rhs.pos_;
+            auth_set1_ = rhs.auth_set1_;
+            auth_set2_ = rhs.auth_set2_;
+        }
+        return *this;
+    }
+    AuthProxyIterator& operator++() {
+        if (pos_ == invalid) return *this;
+        ++pos_;
+        if (pos_ == (auth_set1_->size() + auth_set2_->size())) {
+            pos_ = invalid;
+        }
+        return *this;
+    }
+    const keymaster_key_param_t& operator*() const {
+        if (pos_ < auth_set1_->size()) {
+            return (*auth_set1_)[pos_];
+        } else {
+            return (*auth_set2_)[pos_ - auth_set1_->size()];
+        }
+    }
+    AuthProxyIterator operator++(int) {
+        AuthProxyIterator dummy(*this);
+        ++(*this);
+        return dummy;
+    }
+    const keymaster_key_param_t* operator->() const {
+        return &(*(*this));
+    }
+
+    bool operator==(const AuthProxyIterator& rhs) {
+        if (pos_ == rhs.pos_) {
+            return pos_ == invalid ||
+                    (auth_set1_ == rhs.auth_set1_ && auth_set2_ == rhs.auth_set2_);
+        } else return false;
+    }
+    bool operator!=(const AuthProxyIterator& rhs) {
+        return !operator==(rhs);
+    }
+private:
+    size_t pos_;
+    const AuthorizationSet* auth_set1_;
+    const AuthorizationSet* auth_set2_;
+};
+
+class AuthProxy {
+public:
+    AuthProxy(const AuthorizationSet& hw_enforced, const AuthorizationSet& sw_enforced)
+        : hw_enforced_(hw_enforced),
+          sw_enforced_(sw_enforced) {
+    }
+
+    template<typename... ARGS>
+    bool Contains(ARGS&&... args) const {
+        return hw_enforced_.Contains(forward<ARGS>(args)...) ||
+               sw_enforced_.Contains(forward<ARGS>(args)...);
+    }
+    template<typename... ARGS>
+    bool GetTagValue(ARGS&&... args) const {
+        return hw_enforced_.GetTagValue(forward<ARGS>(args)...) ||
+               sw_enforced_.GetTagValue(forward<ARGS>(args)...);
+    }
+    AuthProxyIterator begin() const {
+        return AuthProxyIterator(hw_enforced_, sw_enforced_);
+    }
+    AuthProxyIterator end() const {
+        return AuthProxyIterator();
+    }
+private:
+    const AuthorizationSet& hw_enforced_;
+    const AuthorizationSet& sw_enforced_;
+};
 
 }  // namespace keymaster
 

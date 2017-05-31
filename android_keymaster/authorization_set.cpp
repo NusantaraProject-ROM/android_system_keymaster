@@ -258,7 +258,7 @@ keymaster_key_param_t& AuthorizationSet::operator[](int at) {
     return empty_param;
 }
 
-keymaster_key_param_t AuthorizationSet::operator[](int at) const {
+const keymaster_key_param_t& AuthorizationSet::operator[](int at) const {
     if (is_valid() == OK && at < (int)elems_size_) {
         return elems_[at];
     }
