@@ -26,6 +26,9 @@
 #include <keymaster/android_keymaster.h>
 #include <keymaster/android_keymaster_messages.h>
 #include <keymaster/contexts/soft_keymaster_context.h>
+#include <keymaster/contexts/keymaster0_passthrough_context.h>
+#include <keymaster/contexts/keymaster1_passthrough_context.h>
+#include <keymaster/contexts/keymaster2_passthrough_context.h>
 #include <keymaster/contexts/pure_soft_keymaster_context.h>
 #include <keymaster/keymaster_configuration.h>
 #include <keymaster/keymaster_enforcement.h>
@@ -492,6 +495,22 @@ Return<ErrorCode> AndroidKeymaster3Device::abort(uint64_t operationHandle) {
 
 IKeymasterDevice* CreateKeymasterDevice() {
     return new AndroidKeymaster3Device();
+}
+IKeymasterDevice* CreateKeymasterDevice(keymaster2_device_t* km2_device) {
+    if (ConfigureDevice(km2_device) != KM_ERROR_OK) return nullptr;
+    auto context = new Keymaster2PassthroughContext(km2_device);
+    context->SetSystemVersion(GetOsVersion(), GetOsPatchlevel());
+    return new AndroidKeymaster3Device(context, KeymasterHardwareProfile::KM2);
+}
+IKeymasterDevice* CreateKeymasterDevice(keymaster1_device_t* km1_device) {
+    auto context = new Keymaster1PassthroughContext(km1_device);
+    context->SetSystemVersion(GetOsVersion(), GetOsPatchlevel());
+    return new AndroidKeymaster3Device(context, KeymasterHardwareProfile::KM1);
+}
+IKeymasterDevice* CreateKeymasterDevice(keymaster0_device_t* km0_device) {
+    auto context = new Keymaster0PassthroughContext(km0_device);
+    context->SetSystemVersion(GetOsVersion(), GetOsPatchlevel());
+    return new AndroidKeymaster3Device(context, KeymasterHardwareProfile::KM0);
 }
 
 }  // namespace ng
