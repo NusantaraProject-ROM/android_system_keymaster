@@ -38,14 +38,14 @@ ifdef FORCE_32_BIT
 ARCH_FLAGS = -m32
 endif
 
-ifdef USE_CLANG
-CC=/usr/bin/clang
-CXX=/usr/bin/clang
-CXXFLAGS +=-std=c++11 -DKEYMASTER_CLANG_TEST_BUILD
-CFLAGS += -DKEYMASTER_CLANG_TEST_BUILD
-else
-CXXFLAGS +=-std=c++0x -fprofile-arcs -ftest-coverage
+ifdef USE_GCC
+CXXFLAGS +=-std=c++14 -fprofile-arcs -ftest-coverage
 CFLAGS += -fprofile-arcs -ftest-coverage
+else
+CC=$(BASE)/prebuilts/clang/host/linux-x86/clang-stable/bin/clang
+CXX=$(BASE)/prebuilts/clang/host/linux-x86/clang-stable/bin/clang++
+CXXFLAGS +=-std=c++14 -DKEYMASTER_CLANG_TEST_BUILD
+CFLAGS += -DKEYMASTER_CLANG_TEST_BUILD
 endif
 
 LDFLAGS += $(ARCH_FLAGS)

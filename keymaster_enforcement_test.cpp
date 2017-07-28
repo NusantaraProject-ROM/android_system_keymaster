@@ -51,7 +51,7 @@ class TestKeymasterEnforcement : public KeymasterEnforcement {
         time_t expiration_time = expiration_date / 1000;
         return difftime(time(NULL), expiration_time) > 0;
     }
-    bool auth_token_timed_out(const hw_auth_token_t& token, uint32_t timeout) const {
+    bool auth_token_timed_out(const hw_auth_token_t& token, uint32_t timeout) const override {
         return current_time_ > ntoh(token.timestamp) + timeout;
     }
     bool ValidateTokenSignature(const hw_auth_token_t&) const override {

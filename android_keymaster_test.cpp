@@ -128,7 +128,7 @@ class Keymaster0AdapterTestInstanceCreator : public Keymaster2TestInstanceCreato
   public:
     explicit Keymaster0AdapterTestInstanceCreator(bool support_ec) : support_ec_(support_ec) {}
 
-    keymaster2_device_t* CreateDevice() const {
+    keymaster2_device_t* CreateDevice() const override {
         std::cerr << "Creating keymaster0-backed device (with ec: " << std::boolalpha << support_ec_
                   << ")." << std::endl;
         hw_device_t* softkeymaster_device;
@@ -185,7 +185,7 @@ class Keymaster0AdapterTestInstanceCreator : public Keymaster2TestInstanceCreato
  * instance, with minimal digest support.
  */
 class Sha256OnlyKeymaster1TestInstanceCreator : public Keymaster2TestInstanceCreator {
-    keymaster2_device_t* CreateDevice() const {
+    keymaster2_device_t* CreateDevice() const override {
         std::cerr << "Creating keymaster1-backed device that supports only SHA256";
 
         // fake_device doesn't leak because device (below) takes ownership of it.
@@ -220,7 +220,7 @@ class Sha256OnlyKeymaster1TestInstanceCreator : public Keymaster2TestInstanceCre
  * instance, with full digest support
  */
 class Keymaster1TestInstanceCreator : public Keymaster2TestInstanceCreator {
-    keymaster2_device_t* CreateDevice() const {
+    keymaster2_device_t* CreateDevice() const override {
         std::cerr << "Creating keymaster1-backed device";
 
         // fake_device doesn't leak because device (below) takes ownership of it.

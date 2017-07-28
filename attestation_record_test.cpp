@@ -77,7 +77,7 @@ class TestContext : public KeymasterContext {
     keymaster_error_t GenerateRandom(uint8_t* /* buf */, size_t /* length */) const override {
         return KM_ERROR_UNIMPLEMENTED;
     }
-    KeymasterEnforcement* enforcement_policy() { return nullptr; }
+    KeymasterEnforcement* enforcement_policy() override { return nullptr; }
     EVP_PKEY* AttestationKey(keymaster_algorithm_t /* algorithm */,
                              keymaster_error_t* /* error */) const override {
         return nullptr;
@@ -88,7 +88,7 @@ class TestContext : public KeymasterContext {
     }
     keymaster_error_t GenerateUniqueId(uint64_t /* creation_date_time */,
                                        const keymaster_blob_t& /* application_id */,
-                                       bool /* reset_since_rotation */, Buffer* unique_id) const {
+                                       bool /* reset_since_rotation */, Buffer* unique_id) const override {
         // Finally, the reason for defining this class:
         unique_id->Reinitialize("foo", 3);
         return KM_ERROR_OK;
