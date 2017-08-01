@@ -88,6 +88,7 @@ cc_library_shared {
         "serializable.cpp",
         "symmetric_key.cpp",
         "keymaster_stl.cpp",
+        "wrapped_key.cpp",
     ],
 
     shared_libs: [
