@@ -62,6 +62,7 @@ NistCurveKeyExchange* NistCurveKeyExchange::GenerateKeyExchange(keymaster_ec_cur
     keymaster_error_t error;
     NistCurveKeyExchange* key_exchange = new NistCurveKeyExchange(key.release(), &error);
     if (error != KM_ERROR_OK) {
+        delete key_exchange;
         return nullptr;
     }
     return key_exchange;
