@@ -40,8 +40,8 @@ namespace keymaster {
 
 namespace {
 
-const uint8_t MAJOR_VER = 1;
-const uint8_t MINOR_VER = 1;
+const uint8_t MAJOR_VER = 2;
+const uint8_t MINOR_VER = 0;
 const uint8_t SUBMINOR_VER = 0;
 
 keymaster_error_t CheckVersionInfo(const AuthorizationSet& tee_enforced,
