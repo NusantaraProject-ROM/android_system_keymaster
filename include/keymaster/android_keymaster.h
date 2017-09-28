@@ -79,8 +79,6 @@ class AndroidKeymaster {
     void UpdateOperation(const UpdateOperationRequest& request, UpdateOperationResponse* response);
     void FinishOperation(const FinishOperationRequest& request, FinishOperationResponse* response);
     void AbortOperation(const AbortOperationRequest& request, AbortOperationResponse* response);
-    void ImportWrappedKey(const ImportWrappedKeyRequest& request,
-                          ImportWrappedKeyResponse* response);
 
     bool has_operation(keymaster_operation_handle_t op_handle) const;
 

@@ -21,8 +21,6 @@
 
 #include <stddef.h>
 
-#include <openssl/aes.h>
-#include <openssl/asn1.h>
 #include <openssl/rand.h>
 #include <openssl/x509.h>
 
@@ -35,10 +33,8 @@
 #include "ae.h"
 #include "key.h"
 #include "openssl_err.h"
-#include "openssl_utils.h"
 #include "operation.h"
 #include "operation_table.h"
-#include "wrapped_key.h"
 
 namespace keymaster {
 
@@ -492,70 +488,6 @@ keymaster_error_t AndroidKeymaster::LoadKey(const keymaster_key_blob_t& key_blob
         return error;
 
     return (*factory)->LoadKey(key_material, additional_params, *hw_enforced, *sw_enforced, key);
-}
-
-// new in Keymaster 4.0
-void AndroidKeymaster::ImportWrappedKey(const ImportWrappedKeyRequest& request,
-                                        ImportWrappedKeyResponse* response) {
-    if (response == NULL)
-        return;
-    // 1. Parse wrapped key
-    WrappedKeyData wkd;
-    parseWrappedKey(request.wrapped_key_data, request.wrapped_key_data_length, &wkd);
-
-    // 2. Decrypt secure key using the wrapping key
-    UniquePtr<uint8_t[]> aesKey;
-
-    // Get wrapping key from request data.
-    // ParseKeyBlob(blob, params, material, sw_enforced, hw_enforced); FIXME
-    RSA_Ptr rsa_private;  // FIXME use material parsed from the wrapping key blob
-    RSA_private_decrypt(wkd.encryptedEphemeralKeys.len, wkd.encryptedEphemeralKeys.data,
-                        aesKey.get(), rsa_private.get(), RSA_PKCS1_OAEP_PADDING);
-
-    // 3. Decrypt secure key using the ephemeral AES key
-    EVP_CIPHER_CTX_Ptr ctx(EVP_CIPHER_CTX_new());
-    int unwrappedKeyLen;
-    UniquePtr<uint8_t[]> unwrappedKey;
-    int aadLen = wkd.authList.len + sizeof(wkd.keyFormat);
-    UniquePtr<uint8_t[]> aad; // FIXME fill AAD with keyFormat + authList
-
-    if (!EVP_DecryptInit_ex(ctx.get(), EVP_aes_256_gcm(), NULL, NULL, NULL) ||
-        !EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_SET_IVLEN, wkd.iv.len, NULL) ||
-        !EVP_DecryptInit_ex(ctx.get(), NULL, NULL, aesKey.get(), wkd.iv.data) ||
-        !EVP_DecryptUpdate(ctx.get(), NULL, &unwrappedKeyLen, aad.get(), aadLen) ||
-        !EVP_DecryptUpdate(ctx.get(), unwrappedKey.get(), &unwrappedKeyLen, wkd.secureKey.data,
-                           wkd.secureKey.len) ||
-        !EVP_CIPHER_CTX_ctrl(ctx.get(), EVP_CTRL_GCM_SET_TAG, 16, &wkd.tag.data)) {
-        // TODO better error codes
-        response->error = KM_ERROR_UNKNOWN_ERROR;
-        return;
-    }
-
-    int len = unwrappedKeyLen;
-    if (!EVP_DecryptFinal_ex(ctx.get(), unwrappedKey.get() + unwrappedKeyLen, &len)) {
-        response->error = KM_ERROR_UNKNOWN_ERROR;
-        return;
-    }
-
-    // 4. Import the unwrapped key
-    // TODO: get algorithm from authList (allow only AES or 3DES)
-    keymaster_algorithm_t algorithm = KM_ALGORITHM_AES;
-    // TODO: populate from authList;
-    AuthorizationSet key_description;
-
-    KeyFactory* factory;
-    if (!(factory = context_->GetKeyFactory(algorithm))) {
-        response->error = KM_ERROR_UNSUPPORTED_ALGORITHM;
-    } else {
-        keymaster_key_blob_t key_material = {unwrappedKey.get(), (size_t)unwrappedKeyLen};
-        KeymasterKeyBlob key_blob;
-        // TODO: generate key_description from authList instead of request
-        response->error = factory->ImportKey(key_description, (keymaster_key_format_t)wkd.keyFormat,
-                                             KeymasterKeyBlob(key_material), &key_blob,
-                                             &response->enforced, &response->unenforced);
-        if (response->error == KM_ERROR_OK)
-            response->key_blob = key_blob.release();
-    }
 }
 
 }  // namespace keymaster

@@ -98,13 +98,6 @@ struct KeymasterMessage : public Serializable {
     uint32_t message_version;
 };
 
-// Safely move src into dst, cleaning up dst first if necessary.
-inline static void move(keymaster_key_blob_t& src, keymaster_key_blob_t& dst) {
-    delete[] dst.key_material;
-    dst = src;
-    src = {};
-}
-
 /**
  * All responses include an error value, and if the error is not KM_ERROR_OK, return no additional
  * data.  This abstract class factors out the common serialization functionality for all of the
@@ -305,7 +298,6 @@ struct GetKeyCharacteristicsRequest : public KeymasterMessage {
     void SetKeyMaterial(const keymaster_key_blob_t& blob) {
         SetKeyMaterial(blob.key_material, blob.key_material_size);
     }
-    void SetKeyMaterial(keymaster_key_blob_t&& blob) { move(blob, key_blob); }
 
     size_t SerializedSize() const override;
     uint8_t* Serialize(uint8_t* buf, const uint8_t* end) const override;
@@ -337,7 +329,6 @@ struct BeginOperationRequest : public KeymasterMessage {
     void SetKeyMaterial(const keymaster_key_blob_t& blob) {
         SetKeyMaterial(blob.key_material, blob.key_material_size);
     }
-    void SetKeyMaterial(keymaster_key_blob_t&& blob) { move(blob, key_blob); }
 
     size_t SerializedSize() const override;
     uint8_t* Serialize(uint8_t* buf, const uint8_t* end) const override;
@@ -504,7 +495,6 @@ struct ExportKeyRequest : public KeymasterMessage {
     void SetKeyMaterial(const keymaster_key_blob_t& blob) {
         SetKeyMaterial(blob.key_material, blob.key_material_size);
     }
-    void SetKeyMaterial(keymaster_key_blob_t&& blob) { move(blob, key_blob); }
 
     size_t SerializedSize() const override;
     uint8_t* Serialize(uint8_t* buf, const uint8_t* end) const override;
@@ -544,7 +534,6 @@ struct DeleteKeyRequest : public KeymasterMessage {
     void SetKeyMaterial(const keymaster_key_blob_t& blob) {
         SetKeyMaterial(blob.key_material, blob.key_material_size);
     }
-    void SetKeyMaterial(keymaster_key_blob_t&& blob) { move(blob, key_blob); }
 
     size_t SerializedSize() const override;
     uint8_t* Serialize(uint8_t* buf, const uint8_t* end) const override;
@@ -644,7 +633,6 @@ struct UpgradeKeyRequest : public KeymasterMessage {
     void SetKeyMaterial(const keymaster_key_blob_t& blob) {
         SetKeyMaterial(blob.key_material, blob.key_material_size);
     }
-    void SetKeyMaterial(keymaster_key_blob_t&& blob) { move(blob, key_blob); }
 
     size_t SerializedSize() const override;
     uint8_t* Serialize(uint8_t* buf, const uint8_t* end) const override;
@@ -690,45 +678,6 @@ struct ConfigureResponse : public KeymasterResponse {
     size_t NonErrorSerializedSize() const override { return 0; }
     uint8_t* NonErrorSerialize(uint8_t* buf, const uint8_t*) const override { return buf; }
     bool NonErrorDeserialize(const uint8_t**, const uint8_t*) override { return true; }
-};
-
-struct ImportWrappedKeyRequest : public KeymasterMessage {
-    explicit ImportWrappedKeyRequest(int32_t ver = MAX_MESSAGE_VERSION)
-        : KeymasterMessage(ver), wrapping_key_data(nullptr), wrapped_key_data(nullptr) {}
-    ~ImportWrappedKeyRequest() {
-        delete[] wrapping_key_data;
-        delete[] wrapped_key_data;
-    }
-
-    size_t SerializedSize() const override;
-    uint8_t* Serialize(uint8_t* buf, const uint8_t* end) const override;
-    bool Deserialize(const uint8_t** buf_ptr, const uint8_t* end) override;
-
-    const uint8_t* wrapping_key_data;
-    size_t wrapping_key_data_length;
-    const uint8_t* wrapped_key_data;
-    size_t wrapped_key_data_length;
-};
-
-struct ImportWrappedKeyResponse : public KeymasterResponse {
-    explicit ImportWrappedKeyResponse(int32_t ver = MAX_MESSAGE_VERSION) : KeymasterResponse(ver) {
-        key_blob.key_material = nullptr;
-        key_blob.key_material_size = 0;
-    }
-    ~ImportWrappedKeyResponse() { delete[] key_blob.key_material; }
-
-    void SetKeyMaterial(const void* key_material, size_t length);
-    void SetKeyMaterial(const keymaster_key_blob_t& blob) {
-        SetKeyMaterial(blob.key_material, blob.key_material_size);
-    }
-
-    size_t NonErrorSerializedSize() const override;
-    uint8_t* NonErrorSerialize(uint8_t* buf, const uint8_t* end) const override;
-    bool NonErrorDeserialize(const uint8_t** buf_ptr, const uint8_t* end) override;
-
-    keymaster_key_blob_t key_blob;
-    AuthorizationSet enforced;
-    AuthorizationSet unenforced;
 };
 
 }  // namespace keymaster
