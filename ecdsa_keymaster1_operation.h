@@ -43,9 +43,7 @@ class EcdsaKeymaster1WrappedOperation {
 
     keymaster_error_t GetError(EVP_PKEY* ecdsa_key);
 
-    keymaster_operation_handle_t GetOperationHandle() const { return operation_handle_; }
-
-  private:
+  protected:
     keymaster_purpose_t purpose_;
     keymaster_operation_handle_t operation_handle_;
     const Keymaster1Engine* engine_;
@@ -90,12 +88,6 @@ template <typename BaseOperation> class EcdsaKeymaster1Operation : public BaseOp
         if (error != KM_ERROR_OK)
             return error;
         return super::Abort();
-    }
-
-    keymaster_error_t CreateOperationHandle(const KeymasterContext& /* context */,
-                                            keymaster_operation_handle_t* op_handle) override {
-        *op_handle = wrapped_operation_.GetOperationHandle();
-        return KM_ERROR_OK;
     }
 
   private:

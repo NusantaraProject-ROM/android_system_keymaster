@@ -31,7 +31,7 @@ OperationTable::Entry::~Entry() {
     handle = 0;
 }
 
-keymaster_error_t OperationTable::Add(Operation* operation, const KeymasterContext& context,
+keymaster_error_t OperationTable::Add(Operation* operation,
                                       keymaster_operation_handle_t* op_handle) {
     if (!table_.get()) {
         table_.reset(new (std::nothrow) Entry[table_size_]);
@@ -40,9 +40,8 @@ keymaster_error_t OperationTable::Add(Operation* operation, const KeymasterConte
     }
 
     UniquePtr<Operation> op(operation);
-    keymaster_error_t error = operation->CreateOperationHandle(context, op_handle);
-    if (error != KM_ERROR_OK)
-        return error;
+    if (RAND_bytes(reinterpret_cast<uint8_t*>(op_handle), sizeof(*op_handle)) != 1)
+        return TranslateLastOpenSslError();
     if (*op_handle == 0) {
         // Statistically this is vanishingly unlikely, which means if it ever happens in practice,
         // it indicates a broken RNG.
