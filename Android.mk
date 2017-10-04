@@ -18,18 +18,18 @@ LOCAL_PATH := $(call my-dir)
 include $(CLEAR_VARS)
 LOCAL_MODULE := keymaster_tests
 LOCAL_SRC_FILES := \
-	android_keymaster_messages_test.cpp \
-	android_keymaster_test.cpp \
-	android_keymaster_test_utils.cpp \
-	attestation_record_test.cpp \
-	authorization_set_test.cpp \
-	hkdf_test.cpp \
-	hmac_test.cpp \
-	kdf1_test.cpp \
-	kdf2_test.cpp \
-	kdf_test.cpp \
-	key_blob_test.cpp \
-	keymaster_enforcement_test.cpp
+	tests/android_keymaster_messages_test.cpp \
+	tests/android_keymaster_test.cpp \
+	tests/android_keymaster_test_utils.cpp \
+	tests/attestation_record_test.cpp \
+	tests/authorization_set_test.cpp \
+	tests/hkdf_test.cpp \
+	tests/hmac_test.cpp \
+	tests/kdf1_test.cpp \
+	tests/kdf2_test.cpp \
+	tests/kdf_test.cpp \
+	tests/key_blob_test.cpp \
+	tests/keymaster_enforcement_test.cpp
 
 LOCAL_C_INCLUDES := \
 	$(LOCAL_PATH)/include

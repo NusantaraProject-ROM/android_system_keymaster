@@ -86,15 +86,6 @@ class KeymasterEnforcement {
         return AuthorizeUpdateOrFinish(auth_set, operation_params, op_handle);
     }
 
-    /**
-     * Creates a key ID for use in subsequent calls to AuthorizeOperation.  Clients needn't use this
-     * method of creating key IDs, as long as they use something consistent and unique.  This method
-     * hashes the key blob.
-     *
-     * Returns false if an error in the crypto library prevents creation of an ID.
-     */
-    static bool CreateKeyId(const keymaster_key_blob_t& key_blob, km_id_t* keyid);
-
     //
     // Methods that must be implemented by subclasses
     //
@@ -132,7 +123,7 @@ class KeymasterEnforcement {
      * need not have any relation to any external time standard (other than the duration of
      * "second").
      *
-     * On POSIX systems, it's recommented to use clock_gettime(CLOCK_MONOTONIC, ...) to implement
+     * On POSIX systems, it's recommended to use clock_gettime(CLOCK_MONOTONIC, ...) to implement
      * this method.
      */
     virtual uint32_t get_current_time() const = 0;
@@ -142,6 +133,16 @@ class KeymasterEnforcement {
      * not available.
      */
     virtual bool ValidateTokenSignature(const hw_auth_token_t& token) const = 0;
+
+    /**
+     * Creates a key ID for use in subsequent calls to AuthorizeOperation.  AndroidKeymaster uses
+     * this method for creating key IDs. The generated id must be stable in that the same key_blob
+     * bits yield the same keyid.
+     *
+     * Returns false if an error in the crypto library prevents creation of an ID.
+     */
+    virtual bool CreateKeyId(const keymaster_key_blob_t& key_blob, km_id_t* keyid) const = 0;
+
 
   private:
     keymaster_error_t AuthorizeUpdateOrFinish(const AuthorizationSet& auth_set,
