@@ -231,7 +231,28 @@ AndroidKeymaster4Device::AndroidKeymaster4Device()
 AndroidKeymaster4Device::~AndroidKeymaster4Device() {}
 
 Return<void> AndroidKeymaster4Device::getHardwareInfo(getHardwareInfo_cb _hidl_cb) {
-    _hidl_cb(false /* is_secure */, "SoftwareKeymasterDevice", "Google");
+    _hidl_cb(::android::hardware::keymaster::V4_0::SecurityLevel::SOFTWARE,
+             "SoftwareKeymasterDevice", "Google");
+    return Void();
+}
+
+Return<void>
+AndroidKeymaster4Device::getHmacSharingParameters(getHmacSharingParameters_cb _hidl_cb) {
+    _hidl_cb(ErrorCode::UNIMPLEMENTED, {});
+    return Void();
+}
+
+Return<void>
+AndroidKeymaster4Device::computeSharedHmac(const hidl_vec<HmacSharingParameters>& /* params */,
+                                           computeSharedHmac_cb _hidl_cb) {
+    _hidl_cb(ErrorCode::UNIMPLEMENTED, {});
+    return Void();
+}
+
+Return<void> AndroidKeymaster4Device::verifyAuthorization(
+    uint64_t /* challenge */, const hidl_vec<KeyParameter>& /* parametersToVerify */,
+    const HardwareAuthToken& /* authToken */, verifyAuthorization_cb _hidl_cb) {
+    _hidl_cb(ErrorCode::UNIMPLEMENTED, {});
     return Void();
 }
 
@@ -306,6 +327,14 @@ Return<void> AndroidKeymaster4Device::importKey(const hidl_vec<KeyParameter>& pa
         resultCharacteristics.softwareEnforced = kmParamSet2Hidl(response.unenforced);
     }
     _hidl_cb(legacy_enum_conversion(response.error), resultKeyBlob, resultCharacteristics);
+    return Void();
+}
+
+Return<void> AndroidKeymaster4Device::importWrappedKey(
+    const hidl_vec<uint8_t>& /* wrappedKeyData */, const hidl_vec<uint8_t>& /* wrappingKeyBlob */,
+    const hidl_vec<uint8_t>& /* maskingKey */, importWrappedKey_cb _hidl_cb) {
+    // TODO(franksalim): PUT CODE HERE
+    _hidl_cb(ErrorCode::UNIMPLEMENTED, hidl_vec<uint8_t>(), KeyCharacteristics());
     return Void();
 }
 
@@ -418,6 +447,7 @@ Return<void> AndroidKeymaster4Device::update(uint64_t operationHandle,
                                              const hidl_vec<KeyParameter>& inParams,
                                              const hidl_vec<uint8_t>& input,
                                              const HardwareAuthToken& /* authToken */,
+                                             const VerificationToken& /* verificationToken */,
                                              update_cb _hidl_cb) {
     UpdateOperationRequest request;
     request.op_handle = operationHandle;
@@ -439,10 +469,13 @@ Return<void> AndroidKeymaster4Device::update(uint64_t operationHandle,
     return Void();
 }
 
-Return<void>
-AndroidKeymaster4Device::finish(uint64_t operationHandle, const hidl_vec<KeyParameter>& inParams,
-                                const hidl_vec<uint8_t>& input, const hidl_vec<uint8_t>& signature,
-                                const HardwareAuthToken& /* authToken */, finish_cb _hidl_cb) {
+Return<void> AndroidKeymaster4Device::finish(uint64_t operationHandle,
+                                             const hidl_vec<KeyParameter>& inParams,
+                                             const hidl_vec<uint8_t>& input,
+                                             const hidl_vec<uint8_t>& signature,
+                                             const HardwareAuthToken& /* authToken */,
+                                             const VerificationToken& /* verificationToken */,
+                                             finish_cb _hidl_cb) {
     FinishOperationRequest request;
     request.op_handle = operationHandle;
     request.input.Reinitialize(input.data(), input.size());
