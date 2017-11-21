@@ -28,6 +28,7 @@ namespace keymaster {
 
 constexpr uint kCurrentKeymasterVersion = 3;
 constexpr uint kCurrentAttestationVersion = 2;
+constexpr size_t kMaximumAttestationChallengeLength = 128;
 
 struct stack_st_ASN1_TYPE_Delete {
     void operator()(stack_st_ASN1_TYPE* p) { sk_ASN1_TYPE_free(p); }
@@ -539,6 +540,10 @@ keymaster_error_t build_attestation_record(const AuthorizationSet& attestation_p
     keymaster_blob_t attestation_challenge = {nullptr, 0};
     if (!attestation_params.GetTagValue(TAG_ATTESTATION_CHALLENGE, &attestation_challenge))
         return KM_ERROR_ATTESTATION_CHALLENGE_MISSING;
+
+    if (attestation_challenge.data_length > kMaximumAttestationChallengeLength)
+        return KM_ERROR_INVALID_INPUT_LENGTH;
+
     if (!ASN1_OCTET_STRING_set(key_desc->attestation_challenge, attestation_challenge.data,
                                attestation_challenge.data_length))
         return TranslateLastOpenSslError();
