@@ -259,7 +259,7 @@ cc_library_shared {
 
 cc_library_shared {
     name: "libkeymaster3device",
-    vendor_available: true,
+    vendor: true,
     srcs: [
         "legacy_support/keymaster_passthrough_key.cpp",
         "legacy_support/keymaster_passthrough_engine.cpp",
