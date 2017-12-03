@@ -15,10 +15,10 @@
  ** limitations under the License.
  */
 
-#ifndef HIDL_android_hardware_keymaster_V4_0_AndroidKeymaster4_H_
-#define HIDL_android_hardware_keymaster_V4_0_AndroidKeymaster4_H_
+#ifndef HIDL_android_hardware_keymaster_V4_0_AndroidKeymaster4Device_H_
+#define HIDL_android_hardware_keymaster_V4_0_AndroidKeymaster4Device_H_
 
-#include <android/hardware/keymaster/4.0/IKeymaster.h>
+#include <android/hardware/keymaster/4.0/IKeymasterDevice.h>
 
 #include <hidl/MQDescriptor.h>
 #include <hidl/Status.h>
@@ -38,16 +38,16 @@ using ::android::hardware::Void;
 using ::android::hardware::keymaster::V3_0::ErrorCode;
 using ::android::hardware::keymaster::V3_0::KeyFormat;
 using ::android::hardware::keymaster::V4_0::HardwareAuthToken;
-using ::android::hardware::keymaster::V4_0::IKeymaster;
+using ::android::hardware::keymaster::V4_0::IKeymasterDevice;
 using ::android::hardware::keymaster::V4_0::KeyCharacteristics;
 using ::android::hardware::keymaster::V4_0::KeyParameter;
 using ::android::hardware::keymaster::V4_0::KeyPurpose;
 using ::android::hardware::keymaster::V4_0::Tag;
 
-class AndroidKeymaster4 : public IKeymaster {
+class AndroidKeymaster4Device : public IKeymasterDevice {
   public:
-    AndroidKeymaster4();
-    virtual ~AndroidKeymaster4();
+    AndroidKeymaster4Device();
+    virtual ~AndroidKeymaster4Device();
 
     // Methods from ::android::hardware::keymaster::V4_0::IKeymasterDevice follow.
     Return<void> getHardwareInfo(getHardwareInfo_cb _hidl_cb);
@@ -87,10 +87,10 @@ class AndroidKeymaster4 : public IKeymaster {
     std::unique_ptr<::keymaster::AndroidKeymaster> impl_;
 };
 
-IKeymaster* CreateKeymaster();
+IKeymasterDevice* CreateKeymasterDevice();
 
 }  // namespace ng
 }  // namespace V4_0
 }  // namespace keymaster
 
-#endif  // HIDL_android_hardware_keymaster_V4_0_AndroidKeymaster4_H_
+#endif  // HIDL_android_hardware_keymaster_V4_0_AndroidKeymaster4Device_H_

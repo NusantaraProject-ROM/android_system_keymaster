@@ -318,7 +318,7 @@ cc_library_shared {
         "legacy_support/keymaster_passthrough_key.cpp",
         "legacy_support/keymaster_passthrough_engine.cpp",
         "legacy_support/keymaster_passthrough_operation.cpp",
-        "ng/AndroidKeymaster4.cpp",
+        "ng/AndroidKeymaster4Device.cpp",
         "android_keymaster/keymaster_configuration.cpp",
         "km_openssl/attestation_utils.cpp",
     ],

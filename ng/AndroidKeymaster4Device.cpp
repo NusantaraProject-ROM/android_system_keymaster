@@ -18,7 +18,7 @@
 #define LOG_TAG "android.hardware.keymaster@4.0-impl"
 #include <log/log.h>
 
-#include "include/AndroidKeymaster4.h"
+#include "include/AndroidKeymaster4Device.h"
 
 #include <keymasterV4_0/authorization_set.h>
 
@@ -219,7 +219,7 @@ void addClientAndAppData(const hidl_vec<uint8_t>& clientId, const hidl_vec<uint8
 
 }  // anonymous namespace
 
-AndroidKeymaster4::AndroidKeymaster4()
+AndroidKeymaster4Device::AndroidKeymaster4Device()
     : impl_(new ::keymaster::AndroidKeymaster(
           []() -> auto {
               auto context = new PureSoftKeymasterContext();
@@ -228,14 +228,14 @@ AndroidKeymaster4::AndroidKeymaster4()
           }(),
           kOperationTableSize)) {}
 
-AndroidKeymaster4::~AndroidKeymaster4() {}
+AndroidKeymaster4Device::~AndroidKeymaster4Device() {}
 
-Return<void> AndroidKeymaster4::getHardwareInfo(getHardwareInfo_cb _hidl_cb) {
+Return<void> AndroidKeymaster4Device::getHardwareInfo(getHardwareInfo_cb _hidl_cb) {
     _hidl_cb(false /* is_secure */, "SoftwareKeymasterDevice", "Google");
     return Void();
 }
 
-Return<ErrorCode> AndroidKeymaster4::addRngEntropy(const hidl_vec<uint8_t>& data) {
+Return<ErrorCode> AndroidKeymaster4Device::addRngEntropy(const hidl_vec<uint8_t>& data) {
     if (data.size() == 0)
         return ErrorCode::OK;
     AddEntropyRequest request;
@@ -247,8 +247,8 @@ Return<ErrorCode> AndroidKeymaster4::addRngEntropy(const hidl_vec<uint8_t>& data
     return legacy_enum_conversion(response.error);
 }
 
-Return<void> AndroidKeymaster4::generateKey(const hidl_vec<KeyParameter>& keyParams,
-                                            generateKey_cb _hidl_cb) {
+Return<void> AndroidKeymaster4Device::generateKey(const hidl_vec<KeyParameter>& keyParams,
+                                                  generateKey_cb _hidl_cb) {
     GenerateKeyRequest request;
     request.key_description.Reinitialize(KmParamSet(keyParams));
 
@@ -266,10 +266,10 @@ Return<void> AndroidKeymaster4::generateKey(const hidl_vec<KeyParameter>& keyPar
     return Void();
 }
 
-Return<void> AndroidKeymaster4::getKeyCharacteristics(const hidl_vec<uint8_t>& keyBlob,
-                                                      const hidl_vec<uint8_t>& clientId,
-                                                      const hidl_vec<uint8_t>& appData,
-                                                      getKeyCharacteristics_cb _hidl_cb) {
+Return<void> AndroidKeymaster4Device::getKeyCharacteristics(const hidl_vec<uint8_t>& keyBlob,
+                                                            const hidl_vec<uint8_t>& clientId,
+                                                            const hidl_vec<uint8_t>& appData,
+                                                            getKeyCharacteristics_cb _hidl_cb) {
     GetKeyCharacteristicsRequest request;
     request.SetKeyMaterial(keyBlob.data(), keyBlob.size());
     addClientAndAppData(clientId, appData, &request.additional_params);
@@ -286,8 +286,10 @@ Return<void> AndroidKeymaster4::getKeyCharacteristics(const hidl_vec<uint8_t>& k
     return Void();
 }
 
-Return<void> AndroidKeymaster4::importKey(const hidl_vec<KeyParameter>& params, KeyFormat keyFormat,
-                                          const hidl_vec<uint8_t>& keyData, importKey_cb _hidl_cb) {
+Return<void> AndroidKeymaster4Device::importKey(const hidl_vec<KeyParameter>& params,
+                                                KeyFormat keyFormat,
+                                                const hidl_vec<uint8_t>& keyData,
+                                                importKey_cb _hidl_cb) {
     ImportKeyRequest request;
     request.key_description.Reinitialize(KmParamSet(params));
     request.key_format = legacy_enum_conversion(keyFormat);
@@ -307,9 +309,11 @@ Return<void> AndroidKeymaster4::importKey(const hidl_vec<KeyParameter>& params, 
     return Void();
 }
 
-Return<void> AndroidKeymaster4::exportKey(KeyFormat exportFormat, const hidl_vec<uint8_t>& keyBlob,
-                                          const hidl_vec<uint8_t>& clientId,
-                                          const hidl_vec<uint8_t>& appData, exportKey_cb _hidl_cb) {
+Return<void> AndroidKeymaster4Device::exportKey(KeyFormat exportFormat,
+                                                const hidl_vec<uint8_t>& keyBlob,
+                                                const hidl_vec<uint8_t>& clientId,
+                                                const hidl_vec<uint8_t>& appData,
+                                                exportKey_cb _hidl_cb) {
     ExportKeyRequest request;
     request.key_format = legacy_enum_conversion(exportFormat);
     request.SetKeyMaterial(keyBlob.data(), keyBlob.size());
@@ -326,9 +330,9 @@ Return<void> AndroidKeymaster4::exportKey(KeyFormat exportFormat, const hidl_vec
     return Void();
 }
 
-Return<void> AndroidKeymaster4::attestKey(const hidl_vec<uint8_t>& keyToAttest,
-                                          const hidl_vec<KeyParameter>& attestParams,
-                                          attestKey_cb _hidl_cb) {
+Return<void> AndroidKeymaster4Device::attestKey(const hidl_vec<uint8_t>& keyToAttest,
+                                                const hidl_vec<KeyParameter>& attestParams,
+                                                attestKey_cb _hidl_cb) {
     AttestKeyRequest request;
     request.SetKeyMaterial(keyToAttest.data(), keyToAttest.size());
     request.attest_params.Reinitialize(KmParamSet(attestParams));
@@ -344,9 +348,9 @@ Return<void> AndroidKeymaster4::attestKey(const hidl_vec<uint8_t>& keyToAttest,
     return Void();
 }
 
-Return<void> AndroidKeymaster4::upgradeKey(const hidl_vec<uint8_t>& keyBlobToUpgrade,
-                                           const hidl_vec<KeyParameter>& upgradeParams,
-                                           upgradeKey_cb _hidl_cb) {
+Return<void> AndroidKeymaster4Device::upgradeKey(const hidl_vec<uint8_t>& keyBlobToUpgrade,
+                                                 const hidl_vec<KeyParameter>& upgradeParams,
+                                                 upgradeKey_cb _hidl_cb) {
     // There's nothing to be done to upgrade software key blobs.  Further, the software
     // implementation never returns ErrorCode::KEY_REQUIRES_UPGRADE, so this should never be called.
     UpgradeKeyRequest request;
@@ -364,7 +368,7 @@ Return<void> AndroidKeymaster4::upgradeKey(const hidl_vec<uint8_t>& keyBlobToUpg
     return Void();
 }
 
-Return<ErrorCode> AndroidKeymaster4::deleteKey(const hidl_vec<uint8_t>& keyBlob) {
+Return<ErrorCode> AndroidKeymaster4Device::deleteKey(const hidl_vec<uint8_t>& keyBlob) {
     // There's nothing to be done to delete software key blobs.
     DeleteKeyRequest request;
     request.SetKeyMaterial(keyBlob.data(), keyBlob.size());
@@ -375,7 +379,7 @@ Return<ErrorCode> AndroidKeymaster4::deleteKey(const hidl_vec<uint8_t>& keyBlob)
     return legacy_enum_conversion(response.error);
 }
 
-Return<ErrorCode> AndroidKeymaster4::deleteAllKeys() {
+Return<ErrorCode> AndroidKeymaster4Device::deleteAllKeys() {
     // There's nothing to be done to delete software key blobs.
     DeleteAllKeysRequest request;
     DeleteAllKeysResponse response;
@@ -384,13 +388,14 @@ Return<ErrorCode> AndroidKeymaster4::deleteAllKeys() {
     return legacy_enum_conversion(response.error);
 }
 
-Return<ErrorCode> AndroidKeymaster4::destroyAttestationIds() {
+Return<ErrorCode> AndroidKeymaster4Device::destroyAttestationIds() {
     return ErrorCode::UNIMPLEMENTED;
 }
 
-Return<void> AndroidKeymaster4::begin(KeyPurpose purpose, const hidl_vec<uint8_t>& key,
-                                      const hidl_vec<KeyParameter>& inParams,
-                                      const HardwareAuthToken& /* authToken */, begin_cb _hidl_cb) {
+Return<void> AndroidKeymaster4Device::begin(KeyPurpose purpose, const hidl_vec<uint8_t>& key,
+                                            const hidl_vec<KeyParameter>& inParams,
+                                            const HardwareAuthToken& /* authToken */,
+                                            begin_cb _hidl_cb) {
 
     BeginOperationRequest request;
     request.purpose = legacy_enum_conversion(purpose);
@@ -409,11 +414,11 @@ Return<void> AndroidKeymaster4::begin(KeyPurpose purpose, const hidl_vec<uint8_t
     return Void();
 }
 
-Return<void> AndroidKeymaster4::update(uint64_t operationHandle,
-                                       const hidl_vec<KeyParameter>& inParams,
-                                       const hidl_vec<uint8_t>& input,
-                                       const HardwareAuthToken& /* authToken */,
-                                       update_cb _hidl_cb) {
+Return<void> AndroidKeymaster4Device::update(uint64_t operationHandle,
+                                             const hidl_vec<KeyParameter>& inParams,
+                                             const hidl_vec<uint8_t>& input,
+                                             const HardwareAuthToken& /* authToken */,
+                                             update_cb _hidl_cb) {
     UpdateOperationRequest request;
     request.op_handle = operationHandle;
     request.input.Reinitialize(input.data(), input.size());
@@ -435,9 +440,9 @@ Return<void> AndroidKeymaster4::update(uint64_t operationHandle,
 }
 
 Return<void>
-AndroidKeymaster4::finish(uint64_t operationHandle, const hidl_vec<KeyParameter>& inParams,
-                          const hidl_vec<uint8_t>& input, const hidl_vec<uint8_t>& signature,
-                          const HardwareAuthToken& /* authToken */, finish_cb _hidl_cb) {
+AndroidKeymaster4Device::finish(uint64_t operationHandle, const hidl_vec<KeyParameter>& inParams,
+                                const hidl_vec<uint8_t>& input, const hidl_vec<uint8_t>& signature,
+                                const HardwareAuthToken& /* authToken */, finish_cb _hidl_cb) {
     FinishOperationRequest request;
     request.op_handle = operationHandle;
     request.input.Reinitialize(input.data(), input.size());
@@ -457,7 +462,7 @@ AndroidKeymaster4::finish(uint64_t operationHandle, const hidl_vec<KeyParameter>
     return Void();
 }
 
-Return<ErrorCode> AndroidKeymaster4::abort(uint64_t operationHandle) {
+Return<ErrorCode> AndroidKeymaster4Device::abort(uint64_t operationHandle) {
     AbortOperationRequest request;
     request.op_handle = operationHandle;
 
@@ -467,8 +472,8 @@ Return<ErrorCode> AndroidKeymaster4::abort(uint64_t operationHandle) {
     return legacy_enum_conversion(response.error);
 }
 
-IKeymaster* CreateKeymaster() {
-    return new AndroidKeymaster4();
+IKeymasterDevice* CreateKeymasterDevice() {
+    return new AndroidKeymaster4Device();
 }
 
 }  // namespace ng
