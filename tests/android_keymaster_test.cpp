@@ -31,7 +31,6 @@
 #include <keymaster/km_openssl/soft_keymaster_enforcement.h>
 #include <keymaster/legacy_support/keymaster0_engine.h>
 #include <keymaster/soft_keymaster_device.h>
-#include <keymaster/softkeymaster.h>
 
 #include "android_keymaster_test_utils.h"
 
@@ -123,66 +122,6 @@ class SoftKeymasterTestInstanceCreator : public Keymaster2TestInstanceCreator {
 };
 
 /**
- * Test instance creator that builds keymaster2 instances which wrap a faked hardware keymaster0
- * instance, with or without EC support.
- */
-class Keymaster0AdapterTestInstanceCreator : public Keymaster2TestInstanceCreator {
-  public:
-    explicit Keymaster0AdapterTestInstanceCreator(bool support_ec) : support_ec_(support_ec) {}
-
-    keymaster2_device_t* CreateDevice() const override {
-        std::cerr << "Creating keymaster0-backed device (with ec: " << std::boolalpha << support_ec_
-                  << ")." << std::endl;
-        hw_device_t* softkeymaster_device;
-        EXPECT_EQ(0, openssl_open(&softkeymaster_module.common, KEYSTORE_KEYMASTER,
-                                  &softkeymaster_device));
-        // Make the software device pretend to be hardware
-        keymaster0_device_t* keymaster0_device =
-            reinterpret_cast<keymaster0_device_t*>(softkeymaster_device);
-        keymaster0_device->flags &= ~KEYMASTER_SOFTWARE_ONLY;
-
-        if (!support_ec_) {
-            // Make the software device pretend not to support EC
-            keymaster0_device->flags &= ~KEYMASTER_SUPPORTS_EC;
-        }
-
-        counting_keymaster0_device_ = new Keymaster0CountingWrapper(keymaster0_device);
-
-        context_ = new TestKeymasterContext;
-        SoftKeymasterDevice* keymaster = new SoftKeymasterDevice(context_);
-        keymaster->SetHardwareDevice(counting_keymaster0_device_);
-        AuthorizationSet version_info(AuthorizationSetBuilder()
-                                          .Authorization(TAG_OS_VERSION, kOsVersion)
-                                          .Authorization(TAG_OS_PATCHLEVEL, kOsPatchLevel));
-        keymaster->keymaster2_device()->configure(keymaster->keymaster2_device(), &version_info);
-        return keymaster->keymaster2_device();
-    }
-
-    bool algorithm_in_km0_hardware(keymaster_algorithm_t algorithm) const override {
-        switch (algorithm) {
-        case KM_ALGORITHM_RSA:
-            return true;
-        case KM_ALGORITHM_EC:
-            return support_ec_;
-        default:
-            return false;
-        }
-    }
-    int keymaster0_calls() const override { return counting_keymaster0_device_->count(); }
-    bool is_keymaster1_hw() const override { return false; }
-    KeymasterContext* keymaster_context() const override { return context_; }
-    string name() const override {
-        return string("Wrapped fake keymaster0 ") + (support_ec_ ? "with" : "without") +
-               " EC support";
-    }
-
-  private:
-    mutable TestKeymasterContext* context_;
-    mutable Keymaster0CountingWrapper* counting_keymaster0_device_;
-    bool support_ec_;
-};
-
-/**
  * Test instance creator that builds a SoftKeymasterDevice which wraps a fake hardware keymaster1
  * instance, with minimal digest support.
  */
@@ -254,8 +193,6 @@ class Keymaster1TestInstanceCreator : public Keymaster2TestInstanceCreator {
 
 static auto test_params = testing::Values(
     InstanceCreatorPtr(new SoftKeymasterTestInstanceCreator),
-    InstanceCreatorPtr(new Keymaster0AdapterTestInstanceCreator(true /* support_ec */)),
-    InstanceCreatorPtr(new Keymaster0AdapterTestInstanceCreator(false /* support_ec */)),
     InstanceCreatorPtr(new Keymaster1TestInstanceCreator),
     InstanceCreatorPtr(new Sha256OnlyKeymaster1TestInstanceCreator));
 
@@ -3230,175 +3167,6 @@ TEST_P(AddEntropyTest, AddEntropy) {
               device()->add_rng_entropy(device(), reinterpret_cast<const uint8_t*>("foo"), 3));
 
     EXPECT_EQ(0, GetParam()->keymaster0_calls());
-}
-
-typedef Keymaster2Test Keymaster0AdapterTest;
-INSTANTIATE_TEST_CASE_P(
-    AndroidKeymasterTest, Keymaster0AdapterTest,
-    ::testing::Values(
-        InstanceCreatorPtr(new Keymaster0AdapterTestInstanceCreator(true /* support_ec */)),
-        InstanceCreatorPtr(new Keymaster0AdapterTestInstanceCreator(false /* support_ec */))));
-
-TEST_P(Keymaster0AdapterTest, OldSoftwareKeymaster1RsaBlob) {
-    // Load and use an old-style Keymaster1 software key blob.  These blobs contain OCB-encrypted
-    // key data.
-    string km1_sw = read_file("km1_sw_rsa_512.blob");
-    EXPECT_EQ(486U, km1_sw.length());
-
-    uint8_t* key_data = reinterpret_cast<uint8_t*>(malloc(km1_sw.length()));
-    memcpy(key_data, km1_sw.data(), km1_sw.length());
-    set_key_blob(key_data, km1_sw.length());
-
-    string message(64, 'a');
-    string signature;
-    SignMessage(message, &signature, KM_DIGEST_NONE, KM_PAD_NONE);
-
-    EXPECT_EQ(0, GetParam()->keymaster0_calls());
-}
-
-TEST_P(Keymaster0AdapterTest, UnversionedSoftwareKeymaster1RsaBlob) {
-    // Load and use an old-style Keymaster1 software key blob, without the version byte.  These
-    // blobs contain OCB-encrypted key data.
-    string km1_sw = read_file("km1_sw_rsa_512_unversioned.blob");
-    EXPECT_EQ(477U, km1_sw.length());
-
-    uint8_t* key_data = reinterpret_cast<uint8_t*>(malloc(km1_sw.length()));
-    memcpy(key_data, km1_sw.data(), km1_sw.length());
-    set_key_blob(key_data, km1_sw.length());
-
-    string message(64, 'a');
-    string signature;
-    SignMessage(message, &signature, KM_DIGEST_NONE, KM_PAD_NONE);
-
-    EXPECT_EQ(0, GetParam()->keymaster0_calls());
-}
-
-TEST_P(Keymaster0AdapterTest, OldSoftwareKeymaster1EcdsaBlob) {
-    // Load and use an old-style Keymaster1 software key blob.  These blobs contain OCB-encrypted
-    // key data.
-    string km1_sw = read_file("km1_sw_ecdsa_256.blob");
-    EXPECT_EQ(270U, km1_sw.length());
-
-    uint8_t* key_data = reinterpret_cast<uint8_t*>(malloc(km1_sw.length()));
-    memcpy(key_data, km1_sw.data(), km1_sw.length());
-    set_key_blob(key_data, km1_sw.length());
-
-    string message(32, static_cast<char>(0xFF));
-    string signature;
-    SignMessage(message, &signature, KM_DIGEST_NONE, KM_PAD_NONE);
-
-    EXPECT_EQ(0, GetParam()->keymaster0_calls());
-}
-
-struct Malloc_Delete {
-    void operator()(void* p) { free(p); }
-};
-
-TEST_P(Keymaster0AdapterTest, OldSoftwareKeymaster0RsaBlob) {
-    // Load and use an old softkeymaster blob.  These blobs contain PKCS#8 key data.
-    string km0_sw = read_file("km0_sw_rsa_512.blob");
-    EXPECT_EQ(333U, km0_sw.length());
-
-    uint8_t* key_data = reinterpret_cast<uint8_t*>(malloc(km0_sw.length()));
-    memcpy(key_data, km0_sw.data(), km0_sw.length());
-    set_key_blob(key_data, km0_sw.length());
-
-    string message(64, 'a');
-    string signature;
-    SignMessage(message, &signature, KM_DIGEST_NONE, KM_PAD_NONE);
-
-    EXPECT_EQ(0, GetParam()->keymaster0_calls());
-}
-
-TEST_P(Keymaster0AdapterTest, OldSwKeymaster0RsaBlobGetCharacteristics) {
-    // Load and use an old softkeymaster blob.  These blobs contain PKCS#8 key data.
-    string km0_sw = read_file("km0_sw_rsa_512.blob");
-    EXPECT_EQ(333U, km0_sw.length());
-
-    uint8_t* key_data = reinterpret_cast<uint8_t*>(malloc(km0_sw.length()));
-    memcpy(key_data, km0_sw.data(), km0_sw.length());
-    set_key_blob(key_data, km0_sw.length());
-
-    EXPECT_EQ(KM_ERROR_OK, GetCharacteristics());
-    EXPECT_TRUE(contains(sw_enforced(), TAG_ALGORITHM, KM_ALGORITHM_RSA));
-    EXPECT_TRUE(contains(sw_enforced(), TAG_KEY_SIZE, 512));
-    EXPECT_TRUE(contains(sw_enforced(), TAG_RSA_PUBLIC_EXPONENT, 3));
-    EXPECT_TRUE(contains(sw_enforced(), TAG_DIGEST, KM_DIGEST_NONE));
-    EXPECT_TRUE(contains(sw_enforced(), TAG_PADDING, KM_PAD_NONE));
-    EXPECT_TRUE(contains(sw_enforced(), TAG_PURPOSE, KM_PURPOSE_SIGN));
-    EXPECT_TRUE(contains(sw_enforced(), TAG_PURPOSE, KM_PURPOSE_VERIFY));
-    EXPECT_TRUE(sw_enforced().GetTagValue(TAG_ALL_USERS));
-    EXPECT_TRUE(sw_enforced().GetTagValue(TAG_NO_AUTH_REQUIRED));
-
-    EXPECT_EQ(0, GetParam()->keymaster0_calls());
-}
-
-TEST_P(Keymaster0AdapterTest, OldHwKeymaster0RsaBlob) {
-    // Load and use an old softkeymaster blob.  These blobs contain PKCS#8 key data.
-    string km0_sw = read_file("km0_sw_rsa_512.blob");
-    EXPECT_EQ(333U, km0_sw.length());
-
-    // The keymaster0 wrapper swaps the old softkeymaster leading 'P' for a 'Q' to make the key not
-    // be recognized as a software key.  Do the same here to pretend this is a hardware key.
-    EXPECT_EQ('P', km0_sw[0]);
-    km0_sw[0] = 'Q';
-
-    uint8_t* key_data = reinterpret_cast<uint8_t*>(malloc(km0_sw.length()));
-    memcpy(key_data, km0_sw.data(), km0_sw.length());
-    set_key_blob(key_data, km0_sw.length());
-
-    string message(64, 'a');
-    string signature;
-    SignMessage(message, &signature, KM_DIGEST_NONE, KM_PAD_NONE);
-    VerifyMessage(message, signature, KM_DIGEST_NONE, KM_PAD_NONE);
-
-    EXPECT_EQ(5, GetParam()->keymaster0_calls());
-}
-
-TEST_P(Keymaster0AdapterTest, OldHwKeymaster0RsaBlobGetCharacteristics) {
-    // Load and use an old softkeymaster blob.  These blobs contain PKCS#8 key data.
-    string km0_sw = read_file("km0_sw_rsa_512.blob");
-    EXPECT_EQ(333U, km0_sw.length());
-
-    // The keymaster0 wrapper swaps the old softkeymaster leading 'P' for a 'Q' to make the key not
-    // be recognized as a software key.  Do the same here to pretend this is a hardware key.
-    EXPECT_EQ('P', km0_sw[0]);
-    km0_sw[0] = 'Q';
-
-    uint8_t* key_data = reinterpret_cast<uint8_t*>(malloc(km0_sw.length()));
-    memcpy(key_data, km0_sw.data(), km0_sw.length());
-    set_key_blob(key_data, km0_sw.length());
-
-    EXPECT_EQ(KM_ERROR_OK, GetCharacteristics());
-    EXPECT_TRUE(contains(hw_enforced(), TAG_ALGORITHM, KM_ALGORITHM_RSA));
-    EXPECT_TRUE(contains(hw_enforced(), TAG_KEY_SIZE, 512));
-    EXPECT_TRUE(contains(hw_enforced(), TAG_RSA_PUBLIC_EXPONENT, 3));
-    EXPECT_TRUE(contains(hw_enforced(), TAG_DIGEST, KM_DIGEST_NONE));
-    EXPECT_TRUE(contains(hw_enforced(), TAG_DIGEST, KM_DIGEST_MD5));
-    EXPECT_TRUE(contains(hw_enforced(), TAG_DIGEST, KM_DIGEST_SHA1));
-    EXPECT_TRUE(contains(hw_enforced(), TAG_DIGEST, KM_DIGEST_SHA_2_224));
-    EXPECT_TRUE(contains(hw_enforced(), TAG_DIGEST, KM_DIGEST_SHA_2_256));
-    EXPECT_TRUE(contains(hw_enforced(), TAG_DIGEST, KM_DIGEST_SHA_2_384));
-    EXPECT_TRUE(contains(hw_enforced(), TAG_DIGEST, KM_DIGEST_SHA_2_512));
-    EXPECT_TRUE(contains(hw_enforced(), TAG_PADDING, KM_PAD_NONE));
-    EXPECT_TRUE(contains(hw_enforced(), TAG_PADDING, KM_PAD_RSA_PKCS1_1_5_ENCRYPT));
-    EXPECT_TRUE(contains(hw_enforced(), TAG_PADDING, KM_PAD_RSA_PKCS1_1_5_SIGN));
-    EXPECT_TRUE(contains(hw_enforced(), TAG_PADDING, KM_PAD_RSA_OAEP));
-    EXPECT_TRUE(contains(hw_enforced(), TAG_PADDING, KM_PAD_RSA_PSS));
-    EXPECT_EQ(15U, hw_enforced().size());
-
-    EXPECT_TRUE(contains(sw_enforced(), TAG_PURPOSE, KM_PURPOSE_SIGN));
-    EXPECT_TRUE(contains(sw_enforced(), TAG_PURPOSE, KM_PURPOSE_VERIFY));
-    EXPECT_TRUE(sw_enforced().GetTagValue(TAG_ALL_USERS));
-    EXPECT_TRUE(sw_enforced().GetTagValue(TAG_NO_AUTH_REQUIRED));
-
-    EXPECT_FALSE(contains(sw_enforced(), TAG_ALGORITHM, KM_ALGORITHM_RSA));
-    EXPECT_FALSE(contains(sw_enforced(), TAG_KEY_SIZE, 512));
-    EXPECT_FALSE(contains(sw_enforced(), TAG_RSA_PUBLIC_EXPONENT, 3));
-    EXPECT_FALSE(contains(sw_enforced(), TAG_DIGEST, KM_DIGEST_NONE));
-    EXPECT_FALSE(contains(sw_enforced(), TAG_PADDING, KM_PAD_NONE));
-
-    EXPECT_EQ(1, GetParam()->keymaster0_calls());
 }
 
 typedef Keymaster2Test AttestationTest;
