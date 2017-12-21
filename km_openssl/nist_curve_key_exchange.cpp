@@ -60,24 +60,25 @@ NistCurveKeyExchange* NistCurveKeyExchange::GenerateKeyExchange(keymaster_ec_cur
         return nullptr;
     }
     keymaster_error_t error;
-    NistCurveKeyExchange* key_exchange = new NistCurveKeyExchange(key.release(), &error);
-    if (error != KM_ERROR_OK) {
-        delete key_exchange;
-        return nullptr;
-    }
-    return key_exchange;
+    UniquePtr<NistCurveKeyExchange> key_exchange(new (std::nothrow)
+                                                     NistCurveKeyExchange(key.get(), &error));
+    if (!key_exchange.get()) error = KM_ERROR_MEMORY_ALLOCATION_FAILED;
+    if (error != KM_ERROR_OK) return nullptr;
+    (void)key.release();
+
+    return key_exchange.release();
 }
 
 keymaster_error_t NistCurveKeyExchange::ExtractPublicKey() {
     const EC_GROUP* group = EC_KEY_get0_group(private_key_.get());
     size_t field_len_bits;
     keymaster_error_t error = ec_get_group_size(group, &field_len_bits);
-    if (error != KM_ERROR_OK)
-        return error;
+    if (error != KM_ERROR_OK) return error;
 
     shared_secret_len_ = (field_len_bits + 7) / 8;
     public_key_len_ = 1 + 2 * shared_secret_len_;
-    public_key_.reset(new uint8_t[public_key_len_]);
+    public_key_.reset(new (std::nothrow) uint8_t[public_key_len_]);
+    if (!public_key_.get()) return KM_ERROR_MEMORY_ALLOCATION_FAILED;
     if (EC_POINT_point2oct(group, EC_KEY_get0_public_key(private_key_.get()),
                            POINT_CONVERSION_UNCOMPRESSED, public_key_.get(), public_key_len_,
                            nullptr /* ctx */) != public_key_len_) {
@@ -107,7 +108,8 @@ bool NistCurveKeyExchange::CalculateSharedKey(const uint8_t* peer_public_value,
         return false;
     }
 
-    UniquePtr<uint8_t[]> result(new uint8_t[shared_secret_len_]);
+    UniquePtr<uint8_t[]> result(new (std::nothrow) uint8_t[shared_secret_len_]);
+    if (!result.get()) return false;
     if (ECDH_compute_key(result.get(), shared_secret_len_, point.get(), private_key_.get(),
                          nullptr /* kdf */) != static_cast<int>(shared_secret_len_)) {
         LOG_E("Can't compute ECDH shared key: %d", TranslateLastOpenSslError());
