@@ -57,16 +57,38 @@ cc_library_shared {
         enabled: true,
     },
     srcs: [
+        "android_keymaster/android_keymaster.cpp",
+        "android_keymaster/android_keymaster_messages.cpp",
+        "android_keymaster/android_keymaster_utils.cpp",
+        "android_keymaster/authorization_set.cpp",
+        "android_keymaster/keymaster_enforcement.cpp",
+        "android_keymaster/keymaster_stl.cpp",
+        "android_keymaster/keymaster_tags.cpp",
+        "android_keymaster/logger.cpp",
+        "android_keymaster/operation.cpp",
+        "android_keymaster/operation_table.cpp",
+        "android_keymaster/serializable.cpp",
+        "key_blob_utils/auth_encrypted_key_blob.cpp",
+        "key_blob_utils/integrity_assured_key_blob.cpp",
+        "key_blob_utils/ocb.c",
+        "key_blob_utils/ocb_utils.cpp",
+        "key_blob_utils/software_keyblobs.cpp",
         "km_openssl/aes_key.cpp",
         "km_openssl/aes_operation.cpp",
         "km_openssl/asymmetric_key.cpp",
         "km_openssl/asymmetric_key_factory.cpp",
         "km_openssl/attestation_record.cpp",
-        "km_openssl/ecdsa_operation.cpp",
         "km_openssl/ec_key.cpp",
         "km_openssl/ec_key_factory.cpp",
+        "km_openssl/ecdsa_operation.cpp",
+        "km_openssl/ecies_kem.cpp",
+        "km_openssl/hkdf.cpp",
+        "km_openssl/hmac.cpp",
         "km_openssl/hmac_key.cpp",
         "km_openssl/hmac_operation.cpp",
+        "km_openssl/iso18033kdf.cpp",
+        "km_openssl/kdf.cpp",
+        "km_openssl/nist_curve_key_exchange.cpp",
         "km_openssl/openssl_err.cpp",
         "km_openssl/openssl_utils.cpp",
         "km_openssl/rsa_key.cpp",
@@ -74,20 +96,6 @@ cc_library_shared {
         "km_openssl/rsa_operation.cpp",
         "km_openssl/software_random_source.cpp",
         "km_openssl/symmetric_key.cpp",
-        "android_keymaster/android_keymaster.cpp",
-        "android_keymaster/android_keymaster_messages.cpp",
-        "android_keymaster/android_keymaster_utils.cpp",
-        "android_keymaster/authorization_set.cpp",
-        "android_keymaster/keymaster_enforcement.cpp",
-        "android_keymaster/keymaster_tags.cpp",
-        "android_keymaster/logger.cpp",
-        "android_keymaster/operation.cpp",
-        "android_keymaster/operation_table.cpp",
-        "android_keymaster/serializable.cpp",
-        "android_keymaster/keymaster_stl.cpp",
-        "key_blob_utils/auth_encrypted_key_blob.cpp",
-        "key_blob_utils/ocb.c",
-        "key_blob_utils/ocb_utils.cpp",
     ],
 
     shared_libs: [
@@ -116,51 +124,6 @@ cc_library_shared {
     ],
 
     export_include_dirs: ["include"],
-
-}
-
-// libkeymaster_staging adds to libkeymaster_portable code that is needed by the softkeymaster device
-// to implement keymaster. This is sort of a staging area for functionality that may move
-// to libkeymaster_portalbe eventually. Unlike libkeymaster_portable, this library can use c++ stl
-// headers, but modules should avoid it if they are to be moved to libkeymaster_portable.
-cc_library_shared {
-    name: "libkeymaster_staging",
-    vendor_available: true,
-    vndk: {
-        enabled: true,
-    },
-    srcs: [
-        "km_openssl/ecies_kem.cpp",
-        "km_openssl/hkdf.cpp",
-        "km_openssl/hmac.cpp",
-        "km_openssl/iso18033kdf.cpp",
-        "km_openssl/kdf.cpp",
-        "km_openssl/nist_curve_key_exchange.cpp",
-        "key_blob_utils/integrity_assured_key_blob.cpp",
-        "key_blob_utils/software_keyblobs.cpp",
-    ],
-
-    shared_libs: [
-        "libcrypto",
-        "libkeymaster_portable",
-        "libkeymaster_messages",
-    ],
-    cflags: [
-        "-Wall",
-        "-Werror",
-        "-Wunused",
-    ],
-    clang: true,
-    clang_cflags: [
-        "-Wno-error=unused-const-variable",
-        "-Wno-error=unused-private-field",
-        // TODO(krasin): reenable coverage flags, when the new Clang toolchain is released.
-        // Currently, if enabled, these flags will cause an internal error in Clang.
-        "-fno-sanitize-coverage=edge,indirect-calls,8bit-counters,trace-cmp"
-    ],
-
-    export_include_dirs: ["include"],
-
 }
 
 // libsoftkeymaster provides a software-based keymaster HAL implementation.
@@ -207,7 +170,6 @@ cc_library {
     shared_libs: [
         "libkeymaster_messages",
         "libkeymaster_portable",
-        "libkeymaster_staging",
         "liblog",
         "libbase",
         "libcrypto",
@@ -248,7 +210,6 @@ cc_library_shared {
     shared_libs: [
         "libkeymaster_messages",
         "libkeymaster_portable",
-        "libkeymaster_staging",
         "liblog",
         "libcrypto",
         "libcutils",
@@ -302,7 +263,6 @@ cc_library_shared {
         "libhidlbase",
         "libhidltransport",
         "libkeymaster_portable",
-        "libkeymaster_staging",
         "libpuresoftkeymasterdevice",
         "liblog",
         "libutils",
@@ -345,7 +305,6 @@ cc_library_shared {
         "libhidlbase",
         "libhidltransport",
         "libkeymaster_portable",
-        "libkeymaster_staging",
         "libpuresoftkeymasterdevice",
         "liblog",
         "libutils",

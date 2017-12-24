@@ -28,31 +28,26 @@ inline size_t min(size_t a, size_t b) {
 
 bool Iso18033Kdf::GenerateKey(const uint8_t* info, size_t info_len, uint8_t* output,
                               size_t output_len) {
-    if (!is_initialized_ || output == nullptr)
-        return false;
+    if (!is_initialized_ || output == nullptr) return false;
 
     /* Check whether output length is too long as specified in ISO/IEC 18033-2. */
-    if ((0xFFFFFFFFULL + start_counter_) * digest_size_ < (uint64_t)output_len)
-        return false;
+    if ((0xFFFFFFFFULL + start_counter_) * digest_size_ < (uint64_t)output_len) return false;
 
     EVP_MD_CTX ctx;
     EvpMdCtxCleaner ctxCleaner(&ctx);
     EVP_MD_CTX_init(&ctx);
 
     size_t num_blocks = (output_len + digest_size_ - 1) / digest_size_;
-    UniquePtr<uint8_t[]> counter(new uint8_t[4]);
-    UniquePtr<uint8_t[]> digest_result(new uint8_t[digest_size_]);
-    if (counter.get() == nullptr || digest_result.get() == nullptr)
-        return false;
+    UniquePtr<uint8_t[]> counter(new (std::nothrow) uint8_t[4]);
+    UniquePtr<uint8_t[]> digest_result(new (std::nothrow) uint8_t[digest_size_]);
+    if (!counter.get() || !digest_result.get()) return false;
     for (size_t block = 0; block < num_blocks; block++) {
         switch (digest_type_) {
         case KM_DIGEST_SHA1:
-            if (!EVP_DigestInit_ex(&ctx, EVP_sha1(), nullptr /* default digest */))
-                return false;
+            if (!EVP_DigestInit_ex(&ctx, EVP_sha1(), nullptr /* default digest */)) return false;
             break;
         case KM_DIGEST_SHA_2_256:
-            if (!EVP_DigestInit_ex(&ctx, EVP_sha256(), nullptr /* default digest */))
-                return false;
+            if (!EVP_DigestInit_ex(&ctx, EVP_sha256(), nullptr /* default digest */)) return false;
             break;
         default:
             return false;
@@ -64,8 +59,7 @@ bool Iso18033Kdf::GenerateKey(const uint8_t* info, size_t info_len, uint8_t* out
             return false;
 
         if (info != nullptr && info_len > 0) {
-            if (!EVP_DigestUpdate(&ctx, info, info_len))
-                return false;
+            if (!EVP_DigestUpdate(&ctx, info, info_len)) return false;
         }
 
         /* OpenSSL does not accept size_t parameter. */
