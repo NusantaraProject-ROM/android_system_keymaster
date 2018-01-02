@@ -1434,6 +1434,7 @@ TEST_P(VerificationOperationsTest, EcdsaAllDigestsAndKeySizes) {
     string signature;
 
     for (auto key_size : key_sizes) {
+        SCOPED_TRACE(testing::Message() << "Key size: " << key_size);
         AuthorizationSetBuilder builder;
         builder.EcdsaSigningKey(key_size);
         for (auto digest : digests)
@@ -1441,6 +1442,7 @@ TEST_P(VerificationOperationsTest, EcdsaAllDigestsAndKeySizes) {
         ASSERT_EQ(KM_ERROR_OK, GenerateKey(builder));
 
         for (auto digest : digests) {
+            SCOPED_TRACE(testing::Message() << "Digest: " << digest);
             SignMessage(message, &signature, digest);
             VerifyMessage(message, signature, digest);
         }
@@ -3254,7 +3256,7 @@ static bool verify_attestation_record(const string& challenge,
                                &att_keymaster_security_level, &att_challenge, &att_sw_enforced,
                                &att_tee_enforced, &att_unique_id));
 
-    EXPECT_EQ(1U, att_attestation_version);
+    EXPECT_EQ(2U, att_attestation_version);
     EXPECT_EQ(KM_SECURITY_LEVEL_SOFTWARE, att_attestation_security_level);
     EXPECT_EQ(expected_keymaster_version, att_keymaster_version);
     EXPECT_EQ(expected_keymaster_security_level, att_keymaster_security_level);
@@ -3310,7 +3312,7 @@ TEST_P(AttestationTest, RsaAttestation) {
         expected_keymaster_version = 0;
         expected_keymaster_security_level = KM_SECURITY_LEVEL_TRUSTED_ENVIRONMENT;
     } else {
-        expected_keymaster_version = 2;
+        expected_keymaster_version = 3;
         expected_keymaster_security_level = KM_SECURITY_LEVEL_SOFTWARE;
     }
 
@@ -3332,7 +3334,7 @@ TEST_P(AttestationTest, EcAttestation) {
         expected_keymaster_version = 0;
         expected_keymaster_security_level = KM_SECURITY_LEVEL_TRUSTED_ENVIRONMENT;
     } else {
-        expected_keymaster_version = 2;
+        expected_keymaster_version = 3;
         expected_keymaster_security_level = KM_SECURITY_LEVEL_SOFTWARE;
     }
 
