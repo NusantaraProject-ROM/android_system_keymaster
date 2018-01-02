@@ -42,8 +42,8 @@ ifdef USE_GCC
 CXXFLAGS +=-std=c++14 -fprofile-arcs -ftest-coverage
 CFLAGS += -fprofile-arcs -ftest-coverage
 else
-CC=$(BASE)/prebuilts/clang/host/linux-x86/clang-stable/bin/clang
-CXX=$(BASE)/prebuilts/clang/host/linux-x86/clang-stable/bin/clang++
+CC=$(BASE)/prebuilts/clang/host/linux-x86/clang-4053586/bin/clang
+CXX=$(BASE)/prebuilts/clang/host/linux-x86/clang-4053586/bin/clang++
 CXXFLAGS +=-std=c++14 -DKEYMASTER_CLANG_TEST_BUILD
 CFLAGS += -DKEYMASTER_CLANG_TEST_BUILD
 endif
@@ -85,6 +85,8 @@ CPPSRCS=\
 	km_openssl/ecies_kem.cpp \
 	tests/ecies_kem_test.cpp \
 	tests/gtest_main.cpp \
+	km_openssl/ckdf.cpp \
+	tests/hkdf_test.cpp \
 	km_openssl/hkdf.cpp \
 	tests/hkdf_test.cpp \
 	km_openssl/hmac.cpp \
@@ -141,6 +143,7 @@ BINARIES = \
 	tests/attestation_record_test \
 	tests/authorization_set_test \
 	tests/ecies_kem_test \
+	tests/ckdf_test \
 	tests/hkdf_test \
 	tests/hmac_test \
 	tests/kdf1_test \
@@ -213,6 +216,17 @@ tests/hmac_test: tests/hmac_test.o \
 	android_keymaster/keymaster_tags.o \
 	android_keymaster/logger.o \
 	android_keymaster/serializable.o \
+	$(GTEST_OBJS)
+
+tests/ckdf_test: tests/ckdf_test.o \
+	tests/android_keymaster_test_utils.o \
+	android_keymaster/android_keymaster_utils.o \
+	android_keymaster/authorization_set.o \
+	android_keymaster/keymaster_tags.o \
+	android_keymaster/logger.o \
+	android_keymaster/serializable.o \
+	km_openssl/ckdf.o \
+	km_openssl/openssl_err.o \
 	$(GTEST_OBJS)
 
 tests/hkdf_test: tests/hkdf_test.o \
@@ -362,7 +376,6 @@ tests/android_keymaster_test: tests/android_keymaster_test.o \
 	contexts/soft_attestation_cert.o \
 	km_openssl/attestation_utils.o \
 	key_blob_utils/software_keyblobs.o \
-	$(BASE)/system/security/softkeymaster/keymaster_openssl.o \
 	$(BASE)/system/security/keystore/keyblob_utils.o \
 	$(GTEST_OBJS)
 
