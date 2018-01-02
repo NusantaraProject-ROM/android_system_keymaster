@@ -422,6 +422,19 @@ constexpr T&& forward(remove_reference_t<T>&& x) {
     return static_cast<T&&>(x);
 }
 
+template <class F> class final_action {
+  public:
+    explicit final_action(F f) : f_(move(f)) {}
+    ~final_action() { f_(); }
+
+  private:
+    F f_;
+};
+
+template <class F> inline final_action<F> finally(const F& f) {
+    return final_action<F>(f);
+}
+
 }  // namespace keymaster
 
 #endif  // SYSTEM_KEYMASTER_ANDROID_KEYMASTER_UTILS_H_

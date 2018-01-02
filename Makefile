@@ -349,6 +349,7 @@ tests/android_keymaster_test: tests/android_keymaster_test.o \
 	km_openssl/ecdsa_operation.o \
 	km_openssl/hmac_key.o \
 	km_openssl/hmac_operation.o \
+	km_openssl/ckdf.o \
 	key_blob_utils/integrity_assured_key_blob.o \
 	legacy_support/keymaster0_engine.o \
 	legacy_support/keymaster1_engine.o \
@@ -385,6 +386,8 @@ tests/keymaster_enforcement_test: tests/keymaster_enforcement_test.o \
 	android_keymaster/android_keymaster_utils.o \
 	android_keymaster/authorization_set.o \
 	android_keymaster/keymaster_enforcement.o \
+	km_openssl/ckdf.o \
+	km_openssl/openssl_err.o \
 	km_openssl/soft_keymaster_enforcement.o \
 	android_keymaster/keymaster_tags.o \
 	android_keymaster/logger.o \

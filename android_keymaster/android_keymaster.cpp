@@ -169,6 +169,31 @@ void AndroidKeymaster::SupportedExportFormats(const SupportedExportFormatsReques
     response->SetResults(formats, count);
 }
 
+GetHmacSharingParametersResponse AndroidKeymaster::GetHmacSharingParameters() {
+    GetHmacSharingParametersResponse response;
+    KeymasterEnforcement* policy = context_->enforcement_policy();
+    if (!policy) {
+        response.error = KM_ERROR_UNIMPLEMENTED;
+        return response;
+    }
+
+    response.error = policy->GetHmacSharingParameters(&response.params);
+    return response;
+}
+
+ComputeSharedHmacResponse
+AndroidKeymaster::ComputeSharedHmac(const ComputeSharedHmacRequest& request) {
+    ComputeSharedHmacResponse response;
+    KeymasterEnforcement* policy = context_->enforcement_policy();
+    if (!policy) {
+        response.error = KM_ERROR_UNIMPLEMENTED;
+        return response;
+    }
+
+    response.error = policy->ComputeSharedHmac(request.params_array, &response.sharing_check);
+    return response;
+}
+
 void AndroidKeymaster::AddRngEntropy(const AddEntropyRequest& request,
                                      AddEntropyResponse* response) {
     response->error = context_->AddRngEntropy(request.random_data.peek_read(),
