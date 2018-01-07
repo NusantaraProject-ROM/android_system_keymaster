@@ -20,7 +20,6 @@
 
 #include <android/hardware/keymaster/4.0/IKeymasterDevice.h>
 
-#include <hidl/MQDescriptor.h>
 #include <hidl/Status.h>
 
 namespace keymaster {
@@ -34,7 +33,7 @@ using ::android::sp;
 using ::android::hardware::hidl_vec;
 using ::android::hardware::Return;
 using ::android::hardware::Void;
-using ::android::hardware::keymaster::V3_0::KeyFormat;
+using ::android::hardware::keymaster::V4_0::KeyFormat;
 using ::android::hardware::keymaster::V4_0::ErrorCode;
 using ::android::hardware::keymaster::V4_0::HardwareAuthToken;
 using ::android::hardware::keymaster::V4_0::HmacSharingParameters;
