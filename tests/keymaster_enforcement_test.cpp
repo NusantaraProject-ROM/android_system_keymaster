@@ -33,7 +33,7 @@ class TestKeymasterEnforcement : public SoftKeymasterEnforcement {
         : SoftKeymasterEnforcement(3, 3), current_time_(10000), report_token_valid_(true) {}
 
     keymaster_error_t AuthorizeOperation(const keymaster_purpose_t purpose, const km_id_t keyid,
-                                         const AuthorizationSet& auth_set) {
+                                         const AuthProxy& auth_set) {
         AuthorizationSet empty_set;
         return KeymasterEnforcement::AuthorizeOperation(
             purpose, keyid, auth_set, empty_set, 0 /* op_handle */, true /* is_begin_operation */);
@@ -91,6 +91,7 @@ class KeymasterBaseTest : public ::testing::Test {
     static const km_id_t key_id = 0xa;
     static const uid_t uid = 0xf;
     keymaster_key_param_t sign_param;
+    AuthorizationSet empty;
 };
 
 TEST_F(KeymasterBaseTest, TestValidKeyPeriodNoTags) {
@@ -99,7 +100,8 @@ TEST_F(KeymasterBaseTest, TestValidKeyPeriodNoTags) {
     };
     AuthorizationSet single_auth_set(params, array_length(params));
 
-    keymaster_error_t kmer = kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, single_auth_set);
+    keymaster_error_t kmer =
+        kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, AuthProxy(single_auth_set, empty));
     ASSERT_EQ(KM_ERROR_OK, kmer);
 }
 
@@ -112,10 +114,11 @@ TEST_F(KeymasterBaseTest, TestInvalidActiveTime) {
     AuthorizationSet auth_set(params, array_length(params));
 
     ASSERT_EQ(KM_ERROR_KEY_NOT_YET_VALID,
-              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, auth_set));
+              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, AuthProxy(auth_set, empty)));
 
     // Pubkey ops allowed.
-    ASSERT_EQ(KM_ERROR_OK, kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, key_id, auth_set));
+    ASSERT_EQ(KM_ERROR_OK,
+              kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, key_id, AuthProxy(auth_set, empty)));
 }
 
 TEST_F(KeymasterBaseTest, TestValidActiveTime) {
@@ -125,7 +128,8 @@ TEST_F(KeymasterBaseTest, TestValidActiveTime) {
 
     AuthorizationSet auth_set(params, array_length(params));
 
-    keymaster_error_t kmer_valid_time = kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, auth_set);
+    keymaster_error_t kmer_valid_time =
+        kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, AuthProxy(auth_set, empty));
     ASSERT_EQ(KM_ERROR_OK, kmer_valid_time);
 }
 
@@ -137,10 +141,12 @@ TEST_F(KeymasterBaseTest, TestInvalidOriginationExpireTime) {
 
     AuthorizationSet auth_set(params, array_length(params));
 
-    ASSERT_EQ(KM_ERROR_KEY_EXPIRED, kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, auth_set));
+    ASSERT_EQ(KM_ERROR_KEY_EXPIRED,
+              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, AuthProxy(auth_set, empty)));
 
     // Pubkey ops allowed.
-    ASSERT_EQ(KM_ERROR_OK, kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, key_id, auth_set));
+    ASSERT_EQ(KM_ERROR_OK,
+              kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, key_id, AuthProxy(auth_set, empty)));
 }
 
 TEST_F(KeymasterBaseTest, TestInvalidOriginationExpireTimeOnUsgae) {
@@ -152,7 +158,7 @@ TEST_F(KeymasterBaseTest, TestInvalidOriginationExpireTimeOnUsgae) {
     AuthorizationSet auth_set(params, array_length(params));
 
     keymaster_error_t kmer_invalid_origination =
-        kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, key_id, auth_set);
+        kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, key_id, AuthProxy(auth_set, empty));
     ASSERT_EQ(KM_ERROR_OK, kmer_invalid_origination);
 }
 
@@ -165,7 +171,7 @@ TEST_F(KeymasterBaseTest, TestValidOriginationExpireTime) {
     AuthorizationSet auth_set(params, array_length(params));
 
     keymaster_error_t kmer_valid_origination =
-        kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, auth_set);
+        kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, AuthProxy(auth_set, empty));
     ASSERT_EQ(KM_ERROR_OK, kmer_valid_origination);
 }
 
@@ -179,7 +185,7 @@ TEST_F(KeymasterBaseTest, TestInvalidUsageExpireTime) {
     AuthorizationSet auth_set(params, array_length(params));
 
     keymaster_error_t kmer_invalid_origination =
-        kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, key_id, auth_set);
+        kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, key_id, AuthProxy(auth_set, empty));
     ASSERT_EQ(KM_ERROR_KEY_EXPIRED, kmer_invalid_origination);
 }
 
@@ -193,7 +199,7 @@ TEST_F(KeymasterBaseTest, TestInvalidPubkeyUsageExpireTime) {
     AuthorizationSet auth_set(params, array_length(params));
 
     keymaster_error_t kmer_invalid_origination =
-        kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, key_id, auth_set);
+        kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, key_id, AuthProxy(auth_set, empty));
     // Pubkey ops allowed.
     ASSERT_EQ(KM_ERROR_OK, kmer_invalid_origination);
 }
@@ -207,7 +213,7 @@ TEST_F(KeymasterBaseTest, TestInvalidUsageExpireTimeOnOrigination) {
     AuthorizationSet auth_set(params, array_length(params));
 
     keymaster_error_t kmer_invalid_origination =
-        kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, auth_set);
+        kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, AuthProxy(auth_set, empty));
     ASSERT_EQ(KM_ERROR_OK, kmer_invalid_origination);
 }
 
@@ -220,7 +226,7 @@ TEST_F(KeymasterBaseTest, TestValidUsageExpireTime) {
     AuthorizationSet auth_set(params, array_length(params));
 
     keymaster_error_t kmer_valid_usage =
-        kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, key_id, auth_set);
+        kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, key_id, AuthProxy(auth_set, empty));
     ASSERT_EQ(KM_ERROR_OK, kmer_valid_usage);
 }
 
@@ -231,8 +237,10 @@ TEST_F(KeymasterBaseTest, TestValidSingleUseAccesses) {
 
     AuthorizationSet auth_set(params, array_length(params));
 
-    keymaster_error_t kmer1 = kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, auth_set);
-    keymaster_error_t kmer2 = kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, auth_set);
+    keymaster_error_t kmer1 =
+        kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, AuthProxy(auth_set, empty));
+    keymaster_error_t kmer2 =
+        kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, AuthProxy(auth_set, empty));
 
     ASSERT_EQ(KM_ERROR_OK, kmer1);
     ASSERT_EQ(KM_ERROR_OK, kmer2);
@@ -246,14 +254,19 @@ TEST_F(KeymasterBaseTest, TestInvalidMaxOps) {
 
     AuthorizationSet auth_set(params, array_length(params));
 
-    ASSERT_EQ(KM_ERROR_OK, kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, auth_set));
-    ASSERT_EQ(KM_ERROR_OK, kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, auth_set));
-    ASSERT_EQ(KM_ERROR_OK, kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, auth_set));
-    ASSERT_EQ(KM_ERROR_OK, kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, auth_set));
+    ASSERT_EQ(KM_ERROR_OK,
+              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, AuthProxy(auth_set, empty)));
+    ASSERT_EQ(KM_ERROR_OK,
+              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, AuthProxy(auth_set, empty)));
+    ASSERT_EQ(KM_ERROR_OK,
+              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, AuthProxy(auth_set, empty)));
+    ASSERT_EQ(KM_ERROR_OK,
+              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, AuthProxy(auth_set, empty)));
     ASSERT_EQ(KM_ERROR_KEY_MAX_OPS_EXCEEDED,
-              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, auth_set));
+              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, AuthProxy(auth_set, empty)));
     // Pubkey ops allowed.
-    ASSERT_EQ(KM_ERROR_OK, kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, key_id, auth_set));
+    ASSERT_EQ(KM_ERROR_OK,
+              kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, key_id, AuthProxy(auth_set, empty)));
 }
 
 TEST_F(KeymasterBaseTest, TestOverFlowMaxOpsTable) {
@@ -264,30 +277,36 @@ TEST_F(KeymasterBaseTest, TestOverFlowMaxOpsTable) {
 
     AuthorizationSet auth_set(params, array_length(params));
 
-    EXPECT_EQ(KM_ERROR_OK, kmen.AuthorizeOperation(KM_PURPOSE_SIGN, 1 /* key_id */, auth_set));
+    EXPECT_EQ(KM_ERROR_OK,
+              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, 1 /* key_id */, AuthProxy(auth_set, empty)));
 
-    EXPECT_EQ(KM_ERROR_OK, kmen.AuthorizeOperation(KM_PURPOSE_SIGN, 2 /* key_id */, auth_set));
+    EXPECT_EQ(KM_ERROR_OK,
+              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, 2 /* key_id */, AuthProxy(auth_set, empty)));
 
-    EXPECT_EQ(KM_ERROR_OK, kmen.AuthorizeOperation(KM_PURPOSE_SIGN, 3 /* key_id */, auth_set));
+    EXPECT_EQ(KM_ERROR_OK,
+              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, 3 /* key_id */, AuthProxy(auth_set, empty)));
 
     // Key 4 should fail, because table is full.
     EXPECT_EQ(KM_ERROR_TOO_MANY_OPERATIONS,
-              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, 4 /* key_id */, auth_set));
+              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, 4 /* key_id */, AuthProxy(auth_set, empty)));
 
     // Key 1 still works, because it's already in the table and hasn't reached max.
-    EXPECT_EQ(KM_ERROR_OK, kmen.AuthorizeOperation(KM_PURPOSE_SIGN, 1 /* key_id */, auth_set));
+    EXPECT_EQ(KM_ERROR_OK,
+              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, 1 /* key_id */, AuthProxy(auth_set, empty)));
 
     // Key 1 no longer works, because it's reached max.
     EXPECT_EQ(KM_ERROR_KEY_MAX_OPS_EXCEEDED,
-              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, 1 /* key_id */, auth_set));
+              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, 1 /* key_id */, AuthProxy(auth_set, empty)));
 
     // Key 4 should fail, because table is (still and forever) full.
     EXPECT_EQ(KM_ERROR_TOO_MANY_OPERATIONS,
-              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, 4 /* key_id */, auth_set));
+              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, 4 /* key_id */, AuthProxy(auth_set, empty)));
 
     // Pubkey ops allowed.
-    EXPECT_EQ(KM_ERROR_OK, kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, 1 /* key_id */, auth_set));
-    EXPECT_EQ(KM_ERROR_OK, kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, 4 /* key_id */, auth_set));
+    EXPECT_EQ(KM_ERROR_OK, kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, 1 /* key_id */,
+                                                   AuthProxy(auth_set, empty)));
+    EXPECT_EQ(KM_ERROR_OK, kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, 4 /* key_id */,
+                                                   AuthProxy(auth_set, empty)));
 }
 
 TEST_F(KeymasterBaseTest, TestInvalidTimeBetweenOps) {
@@ -298,9 +317,12 @@ TEST_F(KeymasterBaseTest, TestInvalidTimeBetweenOps) {
 
     AuthorizationSet auth_set(params, array_length(params));
 
-    keymaster_error_t kmer1 = kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, auth_set);
-    keymaster_error_t kmer2 = kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, auth_set);
-    keymaster_error_t kmer3 = kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, key_id, auth_set);
+    keymaster_error_t kmer1 =
+        kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, AuthProxy(auth_set, empty));
+    keymaster_error_t kmer2 =
+        kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, AuthProxy(auth_set, empty));
+    keymaster_error_t kmer3 =
+        kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, key_id, AuthProxy(auth_set, empty));
 
     ASSERT_EQ(KM_ERROR_OK, kmer1);
     kmen.tick(2);
@@ -318,12 +340,14 @@ TEST_F(KeymasterBaseTest, TestValidTimeBetweenOps) {
 
     AuthorizationSet auth_set(params, array_length(params));
 
-    EXPECT_EQ(KM_ERROR_OK, kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, key_id, auth_set));
+    EXPECT_EQ(KM_ERROR_OK,
+              kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, key_id, AuthProxy(auth_set, empty)));
     kmen.tick();
     EXPECT_EQ(KM_ERROR_KEY_RATE_LIMIT_EXCEEDED,
-              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, auth_set));
+              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, AuthProxy(auth_set, empty)));
     kmen.tick();
-    EXPECT_EQ(KM_ERROR_OK, kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, auth_set));
+    EXPECT_EQ(KM_ERROR_OK,
+              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, AuthProxy(auth_set, empty)));
 }
 
 TEST_F(KeymasterBaseTest, TestOptTimeoutTableOverflow) {
@@ -335,76 +359,97 @@ TEST_F(KeymasterBaseTest, TestOptTimeoutTableOverflow) {
 
     AuthorizationSet auth_set(params, array_length(params));
 
-    EXPECT_EQ(KM_ERROR_OK, kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, 1 /* key_id */, auth_set));
+    EXPECT_EQ(KM_ERROR_OK, kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, 1 /* key_id */,
+                                                   AuthProxy(auth_set, empty)));
 
     kmen.tick();
 
     // Key 1 fails because it's too soon
-    EXPECT_EQ(KM_ERROR_KEY_RATE_LIMIT_EXCEEDED,
-              kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, 1 /* key_id */, auth_set));
+    EXPECT_EQ(
+        KM_ERROR_KEY_RATE_LIMIT_EXCEEDED,
+        kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, 1 /* key_id */, AuthProxy(auth_set, empty)));
 
-    EXPECT_EQ(KM_ERROR_OK, kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, 2 /* key_id */, auth_set));
+    EXPECT_EQ(KM_ERROR_OK, kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, 2 /* key_id */,
+                                                   AuthProxy(auth_set, empty)));
 
     kmen.tick();
 
     // Key 1 fails because it's too soon
-    EXPECT_EQ(KM_ERROR_KEY_RATE_LIMIT_EXCEEDED,
-              kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, 1 /* key_id */, auth_set));
+    EXPECT_EQ(
+        KM_ERROR_KEY_RATE_LIMIT_EXCEEDED,
+        kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, 1 /* key_id */, AuthProxy(auth_set, empty)));
     // Key 2 fails because it's too soon
-    EXPECT_EQ(KM_ERROR_KEY_RATE_LIMIT_EXCEEDED,
-              kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, 2 /* key_id */, auth_set));
+    EXPECT_EQ(
+        KM_ERROR_KEY_RATE_LIMIT_EXCEEDED,
+        kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, 2 /* key_id */, AuthProxy(auth_set, empty)));
 
-    EXPECT_EQ(KM_ERROR_OK, kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, 3 /* key_id */, auth_set));
+    EXPECT_EQ(KM_ERROR_OK, kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, 3 /* key_id */,
+                                                   AuthProxy(auth_set, empty)));
 
     kmen.tick();
 
     // Key 1 fails because it's too soon
-    EXPECT_EQ(KM_ERROR_KEY_RATE_LIMIT_EXCEEDED,
-              kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, 1 /* key_id */, auth_set));
+    EXPECT_EQ(
+        KM_ERROR_KEY_RATE_LIMIT_EXCEEDED,
+        kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, 1 /* key_id */, AuthProxy(auth_set, empty)));
     // Key 2 fails because it's too soon
-    EXPECT_EQ(KM_ERROR_KEY_RATE_LIMIT_EXCEEDED,
-              kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, 2 /* key_id */, auth_set));
+    EXPECT_EQ(
+        KM_ERROR_KEY_RATE_LIMIT_EXCEEDED,
+        kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, 2 /* key_id */, AuthProxy(auth_set, empty)));
     // Key 3 fails because it's too soon
-    EXPECT_EQ(KM_ERROR_KEY_RATE_LIMIT_EXCEEDED,
-              kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, 3 /* key_id */, auth_set));
+    EXPECT_EQ(
+        KM_ERROR_KEY_RATE_LIMIT_EXCEEDED,
+        kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, 3 /* key_id */, AuthProxy(auth_set, empty)));
     // Key 4 fails because the table is full
-    EXPECT_EQ(KM_ERROR_TOO_MANY_OPERATIONS,
-              kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, 4 /* key_id */, auth_set));
+    EXPECT_EQ(
+        KM_ERROR_TOO_MANY_OPERATIONS,
+        kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, 4 /* key_id */, AuthProxy(auth_set, empty)));
 
     kmen.tick();
 
     // Key 4 succeeds because key 1 expired.
-    EXPECT_EQ(KM_ERROR_OK, kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, 4 /* key_id */, auth_set));
+    EXPECT_EQ(KM_ERROR_OK, kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, 4 /* key_id */,
+                                                   AuthProxy(auth_set, empty)));
 
     // Key 1 fails because the table is full... and key 1 is no longer in it.
-    EXPECT_EQ(KM_ERROR_TOO_MANY_OPERATIONS,
-              kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, 1 /* key_id */, auth_set));
+    EXPECT_EQ(
+        KM_ERROR_TOO_MANY_OPERATIONS,
+        kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, 1 /* key_id */, AuthProxy(auth_set, empty)));
     // Key 2 fails because it's too soon
-    EXPECT_EQ(KM_ERROR_KEY_RATE_LIMIT_EXCEEDED,
-              kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, 2 /* key_id */, auth_set));
+    EXPECT_EQ(
+        KM_ERROR_KEY_RATE_LIMIT_EXCEEDED,
+        kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, 2 /* key_id */, AuthProxy(auth_set, empty)));
     // Key 3 fails because it's too soon
-    EXPECT_EQ(KM_ERROR_KEY_RATE_LIMIT_EXCEEDED,
-              kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, 3 /* key_id */, auth_set));
+    EXPECT_EQ(
+        KM_ERROR_KEY_RATE_LIMIT_EXCEEDED,
+        kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, 3 /* key_id */, AuthProxy(auth_set, empty)));
 
     kmen.tick();
 
     // Key 1 succeeds because key 2 expired
-    EXPECT_EQ(KM_ERROR_OK, kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, 1 /* key_id */, auth_set));
+    EXPECT_EQ(KM_ERROR_OK, kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, 1 /* key_id */,
+                                                   AuthProxy(auth_set, empty)));
     // Key 2 fails because the table is full... and key 2 is no longer in it.
-    EXPECT_EQ(KM_ERROR_TOO_MANY_OPERATIONS,
-              kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, 2 /* key_id */, auth_set));
+    EXPECT_EQ(
+        KM_ERROR_TOO_MANY_OPERATIONS,
+        kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, 2 /* key_id */, AuthProxy(auth_set, empty)));
     // Key 3 fails because it's too soon
-    EXPECT_EQ(KM_ERROR_KEY_RATE_LIMIT_EXCEEDED,
-              kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, 3 /* key_id */, auth_set));
+    EXPECT_EQ(
+        KM_ERROR_KEY_RATE_LIMIT_EXCEEDED,
+        kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, 3 /* key_id */, AuthProxy(auth_set, empty)));
     // Key 4 fails because it's too soon
-    EXPECT_EQ(KM_ERROR_KEY_RATE_LIMIT_EXCEEDED,
-              kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, 4 /* key_id */, auth_set));
+    EXPECT_EQ(
+        KM_ERROR_KEY_RATE_LIMIT_EXCEEDED,
+        kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, 4 /* key_id */, AuthProxy(auth_set, empty)));
 
     kmen.tick(4);
 
-    EXPECT_EQ(KM_ERROR_OK, kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, 1 /* key_id */, auth_set));
-    EXPECT_EQ(KM_ERROR_OK, kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, 2 /* key_id */, auth_set));
-    EXPECT_EQ(KM_ERROR_OK, kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, 3 /* key_id */, auth_set));
+    EXPECT_EQ(KM_ERROR_OK, kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, 1 /* key_id */,
+                                                   AuthProxy(auth_set, empty)));
+    EXPECT_EQ(KM_ERROR_OK, kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, 2 /* key_id */,
+                                                   AuthProxy(auth_set, empty)));
+    EXPECT_EQ(KM_ERROR_OK, kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, 3 /* key_id */,
+                                                   AuthProxy(auth_set, empty)));
 }
 
 TEST_F(KeymasterBaseTest, TestPubkeyOptTimeoutTableOverflow) {
@@ -415,15 +460,17 @@ TEST_F(KeymasterBaseTest, TestPubkeyOptTimeoutTableOverflow) {
 
     AuthorizationSet auth_set(params, array_length(params));
 
-    EXPECT_EQ(KM_ERROR_OK, kmen.AuthorizeOperation(KM_PURPOSE_SIGN, 1 /* key_id */, auth_set));
+    EXPECT_EQ(KM_ERROR_OK,
+              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, 1 /* key_id */, AuthProxy(auth_set, empty)));
 
     kmen.tick();
 
     // Key 1 fails because it's too soon
     EXPECT_EQ(KM_ERROR_KEY_RATE_LIMIT_EXCEEDED,
-              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, 1 /* key_id */, auth_set));
+              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, 1 /* key_id */, AuthProxy(auth_set, empty)));
     // Too soo, but pubkey ops allowed.
-    EXPECT_EQ(KM_ERROR_OK, kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, 1 /* key_id */, auth_set));
+    EXPECT_EQ(KM_ERROR_OK, kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, 1 /* key_id */,
+                                                   AuthProxy(auth_set, empty)));
 }
 
 TEST_F(KeymasterBaseTest, TestInvalidPurpose) {
@@ -434,9 +481,9 @@ TEST_F(KeymasterBaseTest, TestInvalidPurpose) {
         AuthorizationSetBuilder().Authorization(TAG_PURPOSE, KM_PURPOSE_VERIFY));
 
     EXPECT_EQ(KM_ERROR_UNSUPPORTED_PURPOSE,
-              kmen.AuthorizeOperation(invalidPurpose1, key_id, auth_set));
+              kmen.AuthorizeOperation(invalidPurpose1, key_id, AuthProxy(auth_set, empty)));
     EXPECT_EQ(KM_ERROR_UNSUPPORTED_PURPOSE,
-              kmen.AuthorizeOperation(invalidPurpose2, key_id, auth_set));
+              kmen.AuthorizeOperation(invalidPurpose2, key_id, AuthProxy(auth_set, empty)));
 }
 
 TEST_F(KeymasterBaseTest, TestIncompatiblePurposeSymmetricKey) {
@@ -445,13 +492,15 @@ TEST_F(KeymasterBaseTest, TestIncompatiblePurposeSymmetricKey) {
                                   .Authorization(TAG_PURPOSE, KM_PURPOSE_VERIFY)
                                   .Authorization(TAG_PURPOSE, KM_PURPOSE_SIGN));
 
-    EXPECT_EQ(KM_ERROR_OK, kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, auth_set));
-    EXPECT_EQ(KM_ERROR_OK, kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, key_id, auth_set));
+    EXPECT_EQ(KM_ERROR_OK,
+              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, AuthProxy(auth_set, empty)));
+    EXPECT_EQ(KM_ERROR_OK,
+              kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, key_id, AuthProxy(auth_set, empty)));
 
     EXPECT_EQ(KM_ERROR_INCOMPATIBLE_PURPOSE,
-              kmen.AuthorizeOperation(KM_PURPOSE_ENCRYPT, key_id, auth_set));
+              kmen.AuthorizeOperation(KM_PURPOSE_ENCRYPT, key_id, AuthProxy(auth_set, empty)));
     EXPECT_EQ(KM_ERROR_INCOMPATIBLE_PURPOSE,
-              kmen.AuthorizeOperation(KM_PURPOSE_DECRYPT, key_id, auth_set));
+              kmen.AuthorizeOperation(KM_PURPOSE_DECRYPT, key_id, AuthProxy(auth_set, empty)));
 }
 
 TEST_F(KeymasterBaseTest, TestIncompatiblePurposeAssymmetricKey) {
@@ -460,13 +509,16 @@ TEST_F(KeymasterBaseTest, TestIncompatiblePurposeAssymmetricKey) {
                                   .Authorization(TAG_PURPOSE, KM_PURPOSE_VERIFY)
                                   .Authorization(TAG_PURPOSE, KM_PURPOSE_SIGN));
 
-    EXPECT_EQ(KM_ERROR_OK, kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, auth_set));
-    EXPECT_EQ(KM_ERROR_OK, kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, key_id, auth_set));
+    EXPECT_EQ(KM_ERROR_OK,
+              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, AuthProxy(auth_set, empty)));
+    EXPECT_EQ(KM_ERROR_OK,
+              kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, key_id, AuthProxy(auth_set, empty)));
 
     // This one is allowed because it's a pubkey op.
-    EXPECT_EQ(KM_ERROR_OK, kmen.AuthorizeOperation(KM_PURPOSE_ENCRYPT, key_id, auth_set));
+    EXPECT_EQ(KM_ERROR_OK,
+              kmen.AuthorizeOperation(KM_PURPOSE_ENCRYPT, key_id, AuthProxy(auth_set, empty)));
     EXPECT_EQ(KM_ERROR_INCOMPATIBLE_PURPOSE,
-              kmen.AuthorizeOperation(KM_PURPOSE_DECRYPT, key_id, auth_set));
+              kmen.AuthorizeOperation(KM_PURPOSE_DECRYPT, key_id, AuthProxy(auth_set, empty)));
 }
 
 TEST_F(KeymasterBaseTest, TestInvalidCallerNonce) {
@@ -481,18 +533,19 @@ TEST_F(KeymasterBaseTest, TestInvalidCallerNonce) {
                                       .Authorization(TAG_CALLER_NONCE));
     AuthorizationSet begin_params(AuthorizationSetBuilder().Authorization(TAG_NONCE, "foo", 3));
 
-    EXPECT_EQ(KM_ERROR_OK,
-              kmen.AuthorizeOperation(KM_PURPOSE_ENCRYPT, key_id, caller_nonce, begin_params,
-                                      0 /* challenge */, true /* is_begin_operation */));
-    EXPECT_EQ(KM_ERROR_OK,
-              kmen.AuthorizeOperation(KM_PURPOSE_DECRYPT, key_id, caller_nonce, begin_params,
-                                      0 /* challenge */, true /* is_begin_operation */));
+    EXPECT_EQ(KM_ERROR_OK, kmen.AuthorizeOperation(
+                               KM_PURPOSE_ENCRYPT, key_id, AuthProxy(caller_nonce, empty),
+                               begin_params, 0 /* challenge */, true /* is_begin_operation */));
+    EXPECT_EQ(KM_ERROR_OK, kmen.AuthorizeOperation(
+                               KM_PURPOSE_DECRYPT, key_id, AuthProxy(caller_nonce, empty),
+                               begin_params, 0 /* challenge */, true /* is_begin_operation */));
     EXPECT_EQ(KM_ERROR_CALLER_NONCE_PROHIBITED,
-              kmen.AuthorizeOperation(KM_PURPOSE_ENCRYPT, key_id, no_caller_nonce, begin_params,
-                                      0 /* challenge */, true /* is_begin_operation */));
-    EXPECT_EQ(KM_ERROR_OK,
-              kmen.AuthorizeOperation(KM_PURPOSE_DECRYPT, key_id, no_caller_nonce, begin_params,
-                                      0 /* challenge */, true /* is_begin_operation */));
+              kmen.AuthorizeOperation(KM_PURPOSE_ENCRYPT, key_id, AuthProxy(no_caller_nonce, empty),
+                                      begin_params, 0 /* challenge */,
+                                      true /* is_begin_operation */));
+    EXPECT_EQ(KM_ERROR_OK, kmen.AuthorizeOperation(
+                               KM_PURPOSE_DECRYPT, key_id, AuthProxy(no_caller_nonce, empty),
+                               begin_params, 0 /* challenge */, true /* is_begin_operation */));
 }
 
 TEST_F(KeymasterBaseTest, TestBootloaderOnly) {
@@ -501,10 +554,11 @@ TEST_F(KeymasterBaseTest, TestBootloaderOnly) {
                                   .Authorization(TAG_ALGORITHM, KM_ALGORITHM_RSA)
                                   .Authorization(TAG_BOOTLOADER_ONLY));
     EXPECT_EQ(KM_ERROR_INVALID_KEY_BLOB,
-              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, auth_set));
+              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, AuthProxy(auth_set, empty)));
 
     // Pubkey ops allowed.
-    EXPECT_EQ(KM_ERROR_OK, kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, key_id, auth_set));
+    EXPECT_EQ(KM_ERROR_OK,
+              kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, key_id, AuthProxy(auth_set, empty)));
 }
 
 TEST_F(KeymasterBaseTest, TestInvalidTag) {
@@ -513,7 +567,7 @@ TEST_F(KeymasterBaseTest, TestInvalidTag) {
                                   .Authorization(TAG_PURPOSE, KM_PURPOSE_SIGN));
 
     EXPECT_EQ(KM_ERROR_INVALID_KEY_BLOB,
-              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, auth_set));
+              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, AuthProxy(auth_set, empty)));
 }
 
 TEST_F(KeymasterBaseTest, TestAuthPerOpSuccess) {
@@ -535,8 +589,8 @@ TEST_F(KeymasterBaseTest, TestAuthPerOpSuccess) {
     op_params.push_back(Authorization(TAG_AUTH_TOKEN, &token, sizeof(token)));
 
     EXPECT_EQ(KM_ERROR_OK,
-              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, auth_set, op_params, token.challenge,
-                                      false /* is_begin_operation */));
+              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, AuthProxy(auth_set, empty),
+                                      op_params, token.challenge, false /* is_begin_operation */));
 }
 
 TEST_F(KeymasterBaseTest, TestAuthPerOpInvalidTokenSignature) {
@@ -560,12 +614,12 @@ TEST_F(KeymasterBaseTest, TestAuthPerOpInvalidTokenSignature) {
 
     kmen.set_report_token_valid(false);
     EXPECT_EQ(KM_ERROR_KEY_USER_NOT_AUTHENTICATED,
-              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, auth_set, op_params, token.challenge,
-                                      false /* is_begin_operation */));
+              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, AuthProxy(auth_set, empty),
+                                      op_params, token.challenge, false /* is_begin_operation */));
     // Pubkey ops allowed.
     EXPECT_EQ(KM_ERROR_OK,
-              kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, key_id, auth_set, op_params,
-                                      token.challenge, false /* is_begin_operation */));
+              kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, key_id, AuthProxy(auth_set, empty),
+                                      op_params, token.challenge, false /* is_begin_operation */));
 }
 
 TEST_F(KeymasterBaseTest, TestAuthPerOpWrongChallenge) {
@@ -587,8 +641,8 @@ TEST_F(KeymasterBaseTest, TestAuthPerOpWrongChallenge) {
     op_params.push_back(Authorization(TAG_AUTH_TOKEN, &token, sizeof(token)));
 
     EXPECT_EQ(KM_ERROR_KEY_USER_NOT_AUTHENTICATED,
-              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, auth_set, op_params,
-                                      token.challenge + 1 /* doesn't match token */,
+              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, AuthProxy(auth_set, empty),
+                                      op_params, token.challenge + 1 /* doesn't match token */,
                                       false /* is_begin_operation */));
 }
 
@@ -611,12 +665,12 @@ TEST_F(KeymasterBaseTest, TestAuthPerOpNoAuthType) {
     op_params.push_back(Authorization(TAG_AUTH_TOKEN, &token, sizeof(token)));
 
     EXPECT_EQ(KM_ERROR_KEY_USER_NOT_AUTHENTICATED,
-              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, auth_set, op_params, token.challenge,
-                                      false /* is_begin_operation */));
+              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, AuthProxy(auth_set, empty),
+                                      op_params, token.challenge, false /* is_begin_operation */));
     // Pubkey ops allowed.
     EXPECT_EQ(KM_ERROR_OK,
-              kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, key_id, auth_set, op_params,
-                                      token.challenge, false /* is_begin_operation */));
+              kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, key_id, AuthProxy(auth_set, empty),
+                                      op_params, token.challenge, false /* is_begin_operation */));
 }
 
 TEST_F(KeymasterBaseTest, TestAuthPerOpWrongAuthType) {
@@ -640,12 +694,12 @@ TEST_F(KeymasterBaseTest, TestAuthPerOpWrongAuthType) {
     op_params.push_back(Authorization(TAG_AUTH_TOKEN, &token, sizeof(token)));
 
     EXPECT_EQ(KM_ERROR_KEY_USER_NOT_AUTHENTICATED,
-              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, auth_set, op_params, token.challenge,
-                                      false /* is_begin_operation */));
+              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, AuthProxy(auth_set, empty),
+                                      op_params, token.challenge, false /* is_begin_operation */));
     // Pubkey ops allowed.
     EXPECT_EQ(KM_ERROR_OK,
-              kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, key_id, auth_set, op_params,
-                                      token.challenge, false /* is_begin_operation */));
+              kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, key_id, AuthProxy(auth_set, empty),
+                                      op_params, token.challenge, false /* is_begin_operation */));
 }
 
 TEST_F(KeymasterBaseTest, TestAuthPerOpWrongSid) {
@@ -669,12 +723,12 @@ TEST_F(KeymasterBaseTest, TestAuthPerOpWrongSid) {
     op_params.push_back(Authorization(TAG_AUTH_TOKEN, &token, sizeof(token)));
 
     EXPECT_EQ(KM_ERROR_KEY_USER_NOT_AUTHENTICATED,
-              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, auth_set, op_params, token.challenge,
-                                      false /* is_begin_operation */));
+              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, AuthProxy(auth_set, empty),
+                                      op_params, token.challenge, false /* is_begin_operation */));
     // Pubkey op allowed.
     EXPECT_EQ(KM_ERROR_OK,
-              kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, key_id, auth_set, op_params,
-                                      token.challenge, false /* is_begin_operation */));
+              kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, key_id, AuthProxy(auth_set, empty),
+                                      op_params, token.challenge, false /* is_begin_operation */));
 }
 
 TEST_F(KeymasterBaseTest, TestAuthPerOpSuccessAlternateSid) {
@@ -696,8 +750,8 @@ TEST_F(KeymasterBaseTest, TestAuthPerOpSuccessAlternateSid) {
     op_params.push_back(Authorization(TAG_AUTH_TOKEN, &token, sizeof(token)));
 
     EXPECT_EQ(KM_ERROR_OK,
-              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, auth_set, op_params, token.challenge,
-                                      false /* is_begin_operation */));
+              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, AuthProxy(auth_set, empty),
+                                      op_params, token.challenge, false /* is_begin_operation */));
 }
 
 TEST_F(KeymasterBaseTest, TestAuthPerOpMissingToken) {
@@ -719,16 +773,17 @@ TEST_F(KeymasterBaseTest, TestAuthPerOpMissingToken) {
     AuthorizationSet op_params;
 
     // During begin we can skip the auth token
-    EXPECT_EQ(KM_ERROR_OK, kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, auth_set, op_params,
-                                                   token.challenge, true /* is_begin_operation */));
+    EXPECT_EQ(KM_ERROR_OK,
+              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, AuthProxy(auth_set, empty),
+                                      op_params, token.challenge, true /* is_begin_operation */));
     // Afterwards we must have authentication
     EXPECT_EQ(KM_ERROR_KEY_USER_NOT_AUTHENTICATED,
-              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, auth_set, op_params, token.challenge,
-                                      false /* is_begin_operation */));
+              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, AuthProxy(auth_set, empty),
+                                      op_params, token.challenge, false /* is_begin_operation */));
     // Pubkey ops allowed
     EXPECT_EQ(KM_ERROR_OK,
-              kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, key_id, auth_set, op_params,
-                                      token.challenge, false /* is_begin_operation */));
+              kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, key_id, AuthProxy(auth_set, empty),
+                                      op_params, token.challenge, false /* is_begin_operation */));
 
     auth_set.Reinitialize(AuthorizationSetBuilder()
                               .Authorization(TAG_ALGORITHM, KM_ALGORITHM_AES)
@@ -738,8 +793,8 @@ TEST_F(KeymasterBaseTest, TestAuthPerOpMissingToken) {
                               .build());
 
     EXPECT_EQ(KM_ERROR_KEY_USER_NOT_AUTHENTICATED,
-              kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, key_id, auth_set, op_params,
-                                      token.challenge, false /* is_begin_operation */));
+              kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, key_id, AuthProxy(auth_set, empty),
+                                      op_params, token.challenge, false /* is_begin_operation */));
 }
 
 TEST_F(KeymasterBaseTest, TestAuthAndNoAuth) {
@@ -749,7 +804,7 @@ TEST_F(KeymasterBaseTest, TestAuthAndNoAuth) {
                                   .Authorization(TAG_PURPOSE, KM_PURPOSE_SIGN));
 
     EXPECT_EQ(KM_ERROR_INVALID_KEY_BLOB,
-              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, auth_set));
+              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, AuthProxy(auth_set, empty)));
 }
 
 TEST_F(KeymasterBaseTest, TestTimedAuthSuccess) {
@@ -772,9 +827,9 @@ TEST_F(KeymasterBaseTest, TestTimedAuthSuccess) {
     AuthorizationSet op_params;
     op_params.push_back(Authorization(TAG_AUTH_TOKEN, &token, sizeof(token)));
 
-    EXPECT_EQ(KM_ERROR_OK,
-              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, auth_set, op_params,
-                                      0 /* irrelevant */, false /* is_begin_operation */));
+    EXPECT_EQ(KM_ERROR_OK, kmen.AuthorizeOperation(
+                               KM_PURPOSE_SIGN, key_id, AuthProxy(auth_set, empty), op_params,
+                               0 /* irrelevant */, false /* is_begin_operation */));
 }
 
 TEST_F(KeymasterBaseTest, TestTimedAuthTimedOut) {
@@ -797,33 +852,34 @@ TEST_F(KeymasterBaseTest, TestTimedAuthTimedOut) {
     AuthorizationSet op_params;
     op_params.push_back(Authorization(TAG_AUTH_TOKEN, &token, sizeof(token)));
 
-    EXPECT_EQ(KM_ERROR_OK,
-              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, auth_set, op_params,
-                                      0 /* irrelevant */, false /* is_begin_operation */));
+    EXPECT_EQ(KM_ERROR_OK, kmen.AuthorizeOperation(
+                               KM_PURPOSE_SIGN, key_id, AuthProxy(auth_set, empty), op_params,
+                               0 /* irrelevant */, false /* is_begin_operation */));
 
     kmen.tick(1);
 
     // token still good
-    EXPECT_EQ(KM_ERROR_OK,
-              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, auth_set, op_params,
-                                      0 /* irrelevant */, false /* is_begin_operation */));
+    EXPECT_EQ(KM_ERROR_OK, kmen.AuthorizeOperation(
+                               KM_PURPOSE_SIGN, key_id, AuthProxy(auth_set, empty), op_params,
+                               0 /* irrelevant */, false /* is_begin_operation */));
 
     kmen.tick(1);
 
     // token expired, not allowed during begin.
     EXPECT_EQ(KM_ERROR_KEY_USER_NOT_AUTHENTICATED,
-              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, auth_set, op_params,
-                                      0 /* irrelevant */, true /* is_begin_operation */));
+              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, AuthProxy(auth_set, empty),
+                                      op_params, 0 /* irrelevant */,
+                                      true /* is_begin_operation */));
 
     // token expired, afterwards it's okay.
-    EXPECT_EQ(KM_ERROR_OK,
-              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, auth_set, op_params,
-                                      0 /* irrelevant */, false /* is_begin_operation */));
+    EXPECT_EQ(KM_ERROR_OK, kmen.AuthorizeOperation(
+                               KM_PURPOSE_SIGN, key_id, AuthProxy(auth_set, empty), op_params,
+                               0 /* irrelevant */, false /* is_begin_operation */));
 
     // Pubkey ops allowed.
-    EXPECT_EQ(KM_ERROR_OK,
-              kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, key_id, auth_set, op_params,
-                                      0 /* irrelevant */, true /* is_begin_operation */));
+    EXPECT_EQ(KM_ERROR_OK, kmen.AuthorizeOperation(
+                               KM_PURPOSE_VERIFY, key_id, AuthProxy(auth_set, empty), op_params,
+                               0 /* irrelevant */, true /* is_begin_operation */));
 }
 
 TEST_F(KeymasterBaseTest, TestTimedAuthMissingToken) {
@@ -847,17 +903,18 @@ TEST_F(KeymasterBaseTest, TestTimedAuthMissingToken) {
 
     // Unlike auth-per-op, must have the auth token during begin.
     EXPECT_EQ(KM_ERROR_KEY_USER_NOT_AUTHENTICATED,
-              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, auth_set, op_params, token.challenge,
-                                      true /* is_begin_operation */));
+              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, AuthProxy(auth_set, empty),
+                                      op_params, token.challenge, true /* is_begin_operation */));
 
     // Later we don't check (though begin would fail, so there wouldn't be a later).
     EXPECT_EQ(KM_ERROR_OK,
-              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, auth_set, op_params, token.challenge,
-                                      false /* is_begin_operation */));
+              kmen.AuthorizeOperation(KM_PURPOSE_SIGN, key_id, AuthProxy(auth_set, empty),
+                                      op_params, token.challenge, false /* is_begin_operation */));
 
     // Pubkey ops allowed.
-    EXPECT_EQ(KM_ERROR_OK, kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, key_id, auth_set, op_params,
-                                                   token.challenge, true /* is_begin_operation */));
+    EXPECT_EQ(KM_ERROR_OK,
+              kmen.AuthorizeOperation(KM_PURPOSE_VERIFY, key_id, AuthProxy(auth_set, empty),
+                                      op_params, token.challenge, true /* is_begin_operation */));
 }
 
 TEST_F(KeymasterBaseTest, TestCreateKeyId) {

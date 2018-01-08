@@ -33,7 +33,6 @@ class Key;
 class Operation;
 using OperationPtr = UniquePtr<Operation>;
 
-
 class OperationFactory {
   public:
     virtual ~OperationFactory() {}
@@ -53,8 +52,7 @@ class OperationFactory {
     virtual KeyType registry_key() const = 0;
 
     // Factory methods
-    virtual OperationPtr CreateOperation(const Key& key,
-                                         const AuthorizationSet& begin_params,
+    virtual OperationPtr CreateOperation(Key&& key, const AuthorizationSet& begin_params,
                                          keymaster_error_t* error) = 0;
 
     // Informational methods.  The returned arrays reference static memory and must not be
@@ -90,8 +88,13 @@ class OperationFactory {
  */
 class Operation {
   public:
-    explicit Operation(keymaster_purpose_t purpose) : purpose_(purpose) {}
+    explicit Operation(keymaster_purpose_t purpose, AuthorizationSet&& hw_enforced,
+                       AuthorizationSet&& sw_enforced)
+        : purpose_(purpose), hw_enforced_(move(hw_enforced)), sw_enforced_(move(sw_enforced)) {}
     virtual ~Operation() {}
+
+    Operation(const Operation&) = delete;
+    void operator=(const Operation&) = delete;
 
     keymaster_purpose_t purpose() const { return purpose_; }
 
@@ -99,10 +102,7 @@ class Operation {
     uint64_t key_id() const { return key_id_; }
     virtual keymaster_operation_handle_t operation_handle() const { return operation_handle_; }
 
-    void SetAuthorizations(const AuthorizationSet& auths) {
-        key_auths_.Reinitialize(auths.data(), auths.size());
-    }
-    const AuthorizationSet authorizations() { return key_auths_; }
+    AuthProxy authorizations() const { return AuthProxy(hw_enforced_, sw_enforced_); }
 
     virtual keymaster_error_t Begin(const AuthorizationSet& input_params,
                                     AuthorizationSet* output_params) = 0;
@@ -114,7 +114,7 @@ class Operation {
                                      Buffer* output) = 0;
     virtual keymaster_error_t Abort() = 0;
 
-protected:
+  protected:
     // Helper function for implementing Finish() methods that need to call Update() to process
     // input, but don't expect any output.
     keymaster_error_t UpdateForFinish(const AuthorizationSet& input_params, const Buffer& input);
@@ -122,7 +122,8 @@ protected:
 
   private:
     const keymaster_purpose_t purpose_;
-    AuthorizationSet key_auths_;
+    AuthorizationSet hw_enforced_;
+    AuthorizationSet sw_enforced_;
     uint64_t key_id_;
 };
 

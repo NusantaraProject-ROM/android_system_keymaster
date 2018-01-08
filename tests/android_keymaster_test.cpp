@@ -1333,6 +1333,9 @@ TEST_P(VerificationOperationsTest, RsaAllDigestAndPadCombinations) {
                 }
             }
 
+            // Round up to the nearest multiple of 128.
+            key_bits = (key_bits + 127) / 128 * 128;
+
             GenerateKey(AuthorizationSetBuilder()
                             .RsaSigningKey(key_bits, 3)
                             .Digest(digest)
@@ -2062,7 +2065,7 @@ TEST_P(EncryptionOperationsTest, RsaOaepTooLarge) {
     begin_params.push_back(TAG_DIGEST, KM_DIGEST_SHA1);
     EXPECT_EQ(KM_ERROR_OK, BeginOperation(KM_PURPOSE_ENCRYPT, begin_params));
     EXPECT_EQ(KM_ERROR_OK, UpdateOperation(message, &result, &input_consumed));
-    EXPECT_EQ(KM_ERROR_INVALID_INPUT_LENGTH, FinishOperation(&result));
+    EXPECT_EQ(KM_ERROR_INVALID_ARGUMENT, FinishOperation(&result));
     EXPECT_EQ(0U, result.size());
 
     if (GetParam()->algorithm_in_km0_hardware(KM_ALGORITHM_RSA))
@@ -2177,7 +2180,7 @@ TEST_P(EncryptionOperationsTest, RsaPkcs1TooLarge) {
     begin_params.push_back(TAG_PADDING, KM_PAD_RSA_PKCS1_1_5_ENCRYPT);
     EXPECT_EQ(KM_ERROR_OK, BeginOperation(KM_PURPOSE_ENCRYPT, begin_params));
     EXPECT_EQ(KM_ERROR_OK, UpdateOperation(message, &result, &input_consumed));
-    EXPECT_EQ(KM_ERROR_INVALID_INPUT_LENGTH, FinishOperation(&result));
+    EXPECT_EQ(KM_ERROR_INVALID_ARGUMENT, FinishOperation(&result));
     EXPECT_EQ(0U, result.size());
 
     if (GetParam()->algorithm_in_km0_hardware(KM_ALGORITHM_RSA))
@@ -3414,10 +3417,10 @@ TEST_P(KeyUpgradeTest, RsaVersionUpgrade) {
     GetParam()->keymaster_context()->SetSystemVersion(1, 1);
 
     ASSERT_EQ(KM_ERROR_OK,
-              GenerateKey(AuthorizationSetBuilder().RsaEncryptionKey(128, 3).Padding(KM_PAD_NONE)));
+              GenerateKey(AuthorizationSetBuilder().RsaEncryptionKey(256, 3).Padding(KM_PAD_NONE)));
 
     // Key should operate fine.
-    string message = "1234567890123456";
+    string message = "12345678901234567890123456789012";
     string ciphertext = EncryptMessage(message, KM_PAD_NONE);
     EXPECT_EQ(message, DecryptMessage(ciphertext, KM_PAD_NONE));
 

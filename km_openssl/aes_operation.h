@@ -32,7 +32,7 @@ class AesOperationFactory : public OperationFactory {
   public:
     KeyType registry_key() const override { return KeyType(KM_ALGORITHM_AES, purpose()); }
 
-    OperationPtr CreateOperation(const Key& key, const AuthorizationSet& begin_params,
+    OperationPtr CreateOperation(Key&& key, const AuthorizationSet& begin_params,
                                  keymaster_error_t* error) override;
     const keymaster_block_mode_t* SupportedBlockModes(size_t* block_mode_count) const override;
     const keymaster_padding_t* SupportedPaddingModes(size_t* padding_count) const override;
@@ -59,8 +59,7 @@ static const size_t MAX_EVP_KEY_SIZE = 32;
 class AesEvpOperation : public Operation {
   public:
     AesEvpOperation(keymaster_purpose_t purpose, keymaster_block_mode_t block_mode,
-                    keymaster_padding_t padding, bool caller_iv, size_t tag_length,
-                    const uint8_t* key, size_t key_size);
+                    keymaster_padding_t padding, bool caller_iv, size_t tag_length, Key&& key);
     ~AesEvpOperation();
 
     keymaster_error_t Begin(const AuthorizationSet& input_params,
@@ -100,17 +99,16 @@ class AesEvpOperation : public Operation {
 
   private:
     bool data_started_;
-    const size_t key_size_;
     const keymaster_padding_t padding_;
-    uint8_t key_[MAX_EVP_KEY_SIZE];
+    KeymasterKeyBlob key_;
 };
 
 class AesEvpEncryptOperation : public AesEvpOperation {
   public:
     AesEvpEncryptOperation(keymaster_block_mode_t block_mode, keymaster_padding_t padding,
-                           bool caller_iv, size_t tag_length, const uint8_t* key, size_t key_size)
-        : AesEvpOperation(KM_PURPOSE_ENCRYPT, block_mode, padding, caller_iv, tag_length, key,
-                          key_size) {}
+                           bool caller_iv, size_t tag_length, Key&& key)
+        : AesEvpOperation(KM_PURPOSE_ENCRYPT, block_mode, padding, caller_iv, tag_length,
+                          move(key)) {}
 
     keymaster_error_t Begin(const AuthorizationSet& input_params,
                             AuthorizationSet* output_params) override;
@@ -127,9 +125,9 @@ class AesEvpEncryptOperation : public AesEvpOperation {
 class AesEvpDecryptOperation : public AesEvpOperation {
   public:
     AesEvpDecryptOperation(keymaster_block_mode_t block_mode, keymaster_padding_t padding,
-                           size_t tag_length, const uint8_t* key, size_t key_size)
+                           size_t tag_length, Key&& key)
         : AesEvpOperation(KM_PURPOSE_DECRYPT, block_mode, padding,
-                          false /* caller_iv -- don't care */, tag_length, key, key_size) {}
+                          false /* caller_iv -- don't care */, tag_length, move(key)) {}
 
     keymaster_error_t Begin(const AuthorizationSet& input_params,
                             AuthorizationSet* output_params) override;

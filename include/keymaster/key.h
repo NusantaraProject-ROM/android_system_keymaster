@@ -20,9 +20,9 @@
 #include <assert.h>
 
 #include <hardware/keymaster_defs.h>
-#include <keymaster/authorization_set.h>
 #include <keymaster/UniquePtr.h>
 #include <keymaster/android_keymaster_utils.h>
+#include <keymaster/authorization_set.h>
 
 namespace keymaster {
 
@@ -31,6 +31,8 @@ class KeyFactory;
 class Key {
   public:
     virtual ~Key() {}
+    Key(const Key&) = delete;
+    void operator=(const Key&) = delete;
 
     /**
      * Return a copy of raw key material, in the specified format.
@@ -39,9 +41,7 @@ class Key {
                                                      UniquePtr<uint8_t[]>* material,
                                                      size_t* size) const = 0;
 
-    AuthProxy authorizations() const {
-        return AuthProxy(hw_enforced_, sw_enforced_);
-    }
+    AuthProxy authorizations() const { return AuthProxy(hw_enforced_, sw_enforced_); }
     const AuthorizationSet& hw_enforced() const { return hw_enforced_; }
     const AuthorizationSet& sw_enforced() const { return sw_enforced_; }
     AuthorizationSet& hw_enforced() { return hw_enforced_; }
@@ -50,13 +50,21 @@ class Key {
     const KeymasterKeyBlob& key_material() const { return key_material_; }
     KeymasterKeyBlob& key_material() { return key_material_; }
 
+    // Methods to move data out of the key.  These could be overloads of the methods above, with ref
+    // qualifiers, but naming them differently makes it harder to accidentally make a temporary copy
+    // when we mean to move.
+    AuthorizationSet&& hw_enforced_move() { return move(hw_enforced_); }
+    AuthorizationSet&& sw_enforced_move() { return move(sw_enforced_); }
+    KeymasterKeyBlob&& key_material_move() { return move(key_material_); }
+
     const KeyFactory* key_factory() const { return key_factory_; }
     const KeyFactory*& key_factory() { return key_factory_; }
+
   protected:
     Key(AuthorizationSet&& hw_enforced, AuthorizationSet&& sw_enforced,
         const KeyFactory* key_factory)
         : hw_enforced_(move(hw_enforced)), sw_enforced_(move(sw_enforced)),
-          key_factory_(key_factory){}
+          key_factory_(key_factory) {}
 
   protected:
     AuthorizationSet hw_enforced_;

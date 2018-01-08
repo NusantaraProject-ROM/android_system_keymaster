@@ -76,13 +76,12 @@ static keymaster_error_t GetAndValidateGcmTagLength(const AuthorizationSet& begi
     return KM_ERROR_OK;
 }
 
-OperationPtr AesOperationFactory::CreateOperation(const Key& key,
-                                                  const AuthorizationSet& begin_params,
+OperationPtr AesOperationFactory::CreateOperation(Key&& key, const AuthorizationSet& begin_params,
                                                   keymaster_error_t* error) {
     *error = KM_ERROR_OK;
-    const SymmetricKey* symmetric_key = static_cast<const SymmetricKey*>(&key);
+    const SymmetricKey& symmetric_key = static_cast<SymmetricKey&>(key);
 
-    switch (symmetric_key->key_material().key_material_size) {
+    switch (symmetric_key.key_material().key_material_size) {
     case 16:
     case 24:
     case 32:
@@ -130,24 +129,19 @@ OperationPtr AesOperationFactory::CreateOperation(const Key& key,
     OperationPtr op;
     switch (purpose()) {
     case KM_PURPOSE_ENCRYPT:
-        op.reset(new (std::nothrow)
-            AesEvpEncryptOperation(block_mode, padding, caller_nonce, tag_length,
-                                   symmetric_key->key_material().key_material,
-                                   symmetric_key->key_material().key_material_size));
+        op.reset(new (std::nothrow) AesEvpEncryptOperation(block_mode, padding, caller_nonce,
+                                                           tag_length, move(key)));
         break;
     case KM_PURPOSE_DECRYPT:
         op.reset(new (std::nothrow)
-            AesEvpDecryptOperation(block_mode, padding, tag_length,
-                                   symmetric_key->key_material().key_material,
-                                   symmetric_key->key_material().key_material_size));
+                     AesEvpDecryptOperation(block_mode, padding, tag_length, move(key)));
         break;
     default:
         *error = KM_ERROR_UNSUPPORTED_PURPOSE;
         return nullptr;
     }
 
-    if (!op)
-        *error = KM_ERROR_MEMORY_ALLOCATION_FAILED;
+    if (!op) *error = KM_ERROR_MEMORY_ALLOCATION_FAILED;
     return op;
 }
 
@@ -169,10 +163,10 @@ AesOperationFactory::SupportedPaddingModes(size_t* padding_mode_count) const {
 
 AesEvpOperation::AesEvpOperation(keymaster_purpose_t purpose, keymaster_block_mode_t block_mode,
                                  keymaster_padding_t padding, bool caller_iv, size_t tag_length,
-                                 const uint8_t* key, size_t key_size)
-    : Operation(purpose), block_mode_(block_mode), caller_iv_(caller_iv), tag_length_(tag_length),
-      data_started_(false), key_size_(key_size), padding_(padding) {
-    memcpy(key_, key, key_size_);
+                                 Key&& key)
+    : Operation(purpose, key.hw_enforced_move(), key.sw_enforced_move()), block_mode_(block_mode),
+      caller_iv_(caller_iv), tag_length_(tag_length), data_started_(false), padding_(padding),
+      key_(key.key_material_move()) {
     EVP_CIPHER_CTX_init(&ctx_);
 }
 
@@ -264,7 +258,7 @@ keymaster_error_t AesEvpOperation::InitializeCipher() {
     const EVP_CIPHER* cipher;
     switch (block_mode_) {
     case KM_MODE_ECB:
-        switch (key_size_) {
+        switch (key_.key_material_size) {
         case 16:
             cipher = EVP_aes_128_ecb();
             break;
@@ -279,7 +273,7 @@ keymaster_error_t AesEvpOperation::InitializeCipher() {
         }
         break;
     case KM_MODE_CBC:
-        switch (key_size_) {
+        switch (key_.key_material_size) {
         case 16:
             cipher = EVP_aes_128_cbc();
             break;
@@ -294,7 +288,7 @@ keymaster_error_t AesEvpOperation::InitializeCipher() {
         }
         break;
     case KM_MODE_CTR:
-        switch (key_size_) {
+        switch (key_.key_material_size) {
         case 16:
             cipher = EVP_aes_128_ctr();
             break;
@@ -309,7 +303,7 @@ keymaster_error_t AesEvpOperation::InitializeCipher() {
         }
         break;
     case KM_MODE_GCM:
-        switch (key_size_) {
+        switch (key_.key_material_size) {
         case 16:
             cipher = EVP_aes_128_gcm();
             break;
@@ -327,8 +321,10 @@ keymaster_error_t AesEvpOperation::InitializeCipher() {
         return KM_ERROR_UNSUPPORTED_BLOCK_MODE;
     }
 
-    if (!EVP_CipherInit_ex(&ctx_, cipher, NULL /* engine */, key_, iv_.get(), evp_encrypt_mode()))
+    if (!EVP_CipherInit_ex(&ctx_, cipher, NULL /* engine */, key_.key_material, iv_.get(),
+                           evp_encrypt_mode())) {
         return TranslateLastOpenSslError();
+    }
 
     switch (padding_) {
     case KM_PAD_NONE:

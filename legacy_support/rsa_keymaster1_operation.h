@@ -53,9 +53,11 @@ template <typename BaseOperation> class RsaKeymaster1Operation : public BaseOper
     typedef BaseOperation super;
 
   public:
-    RsaKeymaster1Operation(keymaster_digest_t digest, keymaster_padding_t padding, EVP_PKEY* key,
+    RsaKeymaster1Operation(AuthorizationSet&& hw_enforced, AuthorizationSet&& sw_enforced,
+                           keymaster_digest_t digest, keymaster_padding_t padding, EVP_PKEY* key,
                            const Keymaster1Engine* engine)
-        : BaseOperation(digest, padding, key), wrapped_operation_(super::purpose(), engine) {
+        : BaseOperation(move(hw_enforced), move(sw_enforced), digest, padding, key),
+          wrapped_operation_(super::purpose(), engine) {
         // Shouldn't be instantiated for public key operations.
         assert(super::purpose() != KM_PURPOSE_VERIFY);
         assert(super::purpose() != KM_PURPOSE_ENCRYPT);
@@ -105,7 +107,7 @@ class RsaKeymaster1OperationFactory : public OperationFactory {
         : purpose_(purpose), engine_(engine) {}
     KeyType registry_key() const override { return KeyType(KM_ALGORITHM_RSA, purpose_); }
 
-    OperationPtr CreateOperation(const Key& key, const AuthorizationSet& begin_params,
+    OperationPtr CreateOperation(Key&& key, const AuthorizationSet& begin_params,
                                  keymaster_error_t* error) override;
 
     const keymaster_digest_t* SupportedDigests(size_t* digest_count) const override;

@@ -21,7 +21,6 @@
 
 #include <stddef.h>
 
-
 #include <keymaster/UniquePtr.h>
 #include <keymaster/android_keymaster_utils.h>
 #include <keymaster/key.h>
@@ -31,7 +30,6 @@
 #include <keymaster/km_openssl/openssl_err.h>
 #include <keymaster/operation.h>
 #include <keymaster/operation_table.h>
-
 
 namespace keymaster {
 
@@ -260,33 +258,21 @@ void AndroidKeymaster::BeginOperation(const BeginOperationRequest& request,
 
     response->error = KM_ERROR_UNSUPPORTED_PURPOSE;
     OperationFactory* factory = key_factory->GetOperationFactory(request.purpose);
-    if (!factory)
-        return;
+    if (!factory) return;
 
     OperationPtr operation(
-        factory->CreateOperation(*key, request.additional_params, &response->error));
-    if (operation.get() == NULL)
-        return;
-
-    response->error = KM_ERROR_MEMORY_ALLOCATION_FAILED;
-    AuthorizationSet authorizations(key->hw_enforced());
-    if (authorizations.is_valid() == AuthorizationSet::ALLOCATION_FAILURE)
-        return;
-    authorizations.push_back(key->sw_enforced());
-    if (authorizations.is_valid() == AuthorizationSet::ALLOCATION_FAILURE)
-        return;
+        factory->CreateOperation(move(*key), request.additional_params, &response->error));
+    if (operation.get() == NULL) return;
 
     if (context_->enforcement_policy()) {
         km_id_t key_id;
         response->error = KM_ERROR_UNKNOWN_ERROR;
-        if (!context_->enforcement_policy()->CreateKeyId(request.key_blob, &key_id))
-            return;
+        if (!context_->enforcement_policy()->CreateKeyId(request.key_blob, &key_id)) return;
         operation->set_key_id(key_id);
         response->error = context_->enforcement_policy()->AuthorizeOperation(
-            request.purpose, key_id, authorizations, request.additional_params,
+            request.purpose, key_id, operation->authorizations(), request.additional_params,
             0 /* op_handle */, true /* is_begin_operation */);
-        if (response->error != KM_ERROR_OK)
-            return;
+        if (response->error != KM_ERROR_OK) return;
     }
 
     response->output_params.Clear();
@@ -294,7 +280,6 @@ void AndroidKeymaster::BeginOperation(const BeginOperationRequest& request,
     if (response->error != KM_ERROR_OK)
         return;
 
-    operation->SetAuthorizations(authorizations);
     response->op_handle = operation->operation_handle();
     response->error = operation_table_->Add(move(operation));
 }

@@ -17,15 +17,15 @@
 #ifndef SYSTEM_KEYMASTER_HMAC_OPERATION_H_
 #define SYSTEM_KEYMASTER_HMAC_OPERATION_H_
 
-#include <openssl/hmac.h>
 #include <keymaster/operation.h>
+#include <openssl/hmac.h>
 
 namespace keymaster {
 
 class HmacOperation : public Operation {
   public:
-    HmacOperation(keymaster_purpose_t purpose, const uint8_t* key_data, size_t key_data_size,
-                  keymaster_digest_t digest, size_t mac_length, size_t min_mac_length);
+    HmacOperation(Key&& key, keymaster_purpose_t purpose, keymaster_digest_t digest,
+                  size_t mac_length, size_t min_mac_length);
     ~HmacOperation();
 
     virtual keymaster_error_t Begin(const AuthorizationSet& input_params,
@@ -55,7 +55,7 @@ class HmacOperationFactory : public OperationFactory {
   public:
     virtual KeyType registry_key() const { return KeyType(KM_ALGORITHM_HMAC, purpose()); }
 
-    virtual OperationPtr CreateOperation(const Key& key, const AuthorizationSet& begin_params,
+    virtual OperationPtr CreateOperation(Key&& key, const AuthorizationSet& begin_params,
                                          keymaster_error_t* error);
 
     virtual const keymaster_digest_t* SupportedDigests(size_t* digest_count) const;
