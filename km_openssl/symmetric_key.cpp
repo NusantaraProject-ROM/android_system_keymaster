@@ -46,7 +46,7 @@ keymaster_error_t SymmetricKeyFactory::GenerateKey(const AuthorizationSet& key_d
     if (error != KM_ERROR_OK)
         return error;
 
-    size_t key_data_size = key_size_bits / 8;
+    size_t key_data_size = key_size_bytes(key_size_bits);
     KeymasterKeyBlob key_material(key_data_size);
     if (!key_material.key_material)
         return KM_ERROR_MEMORY_ALLOCATION_FAILED;
@@ -72,26 +72,21 @@ keymaster_error_t SymmetricKeyFactory::ImportKey(const AuthorizationSet& key_des
 
     AuthorizationSet authorizations(key_description);
 
-    uint32_t key_size_bits;
-    if (!authorizations.GetTagValue(TAG_KEY_SIZE, &key_size_bits)) {
-        // Default key size if not specified.
-        key_size_bits = input_key_material.key_material_size * 8;
-        authorizations.push_back(TAG_KEY_SIZE, key_size_bits);
+    uint32_t key_bits;
+    if (!authorizations.GetTagValue(TAG_KEY_SIZE, &key_bits)) {
+        // Determine key size if not provided.
+        key_bits = key_size_bits(input_key_material.key_material_size);
+        authorizations.push_back(TAG_KEY_SIZE, key_bits);
     }
 
     keymaster_error_t error = validate_algorithm_specific_new_key_params(key_description);
-    if (error != KM_ERROR_OK)
-        return error;
+    if (error != KM_ERROR_OK) return error;
+    if (!key_size_supported(key_bits)) return KM_ERROR_UNSUPPORTED_KEY_SIZE;
+    if (input_key_material_format != KM_KEY_FORMAT_RAW) return KM_ERROR_UNSUPPORTED_KEY_FORMAT;
 
-    if (!key_size_supported(key_size_bits))
-        return KM_ERROR_UNSUPPORTED_KEY_SIZE;
-
-    if (input_key_material_format != KM_KEY_FORMAT_RAW)
-        return KM_ERROR_UNSUPPORTED_KEY_FORMAT;
-
-    if (key_size_bits != input_key_material.key_material_size * 8) {
-        LOG_E("Expected %d-bit key data but got %d bits", key_size_bits,
-              input_key_material.key_material_size * 8);
+    if (key_bits != key_size_bits(input_key_material.key_material_size)) {
+        LOG_E("Expected %d-bit key data but got %d-bit key", key_bits,
+              key_size_bits(input_key_material.key_material_size));
         return KM_ERROR_INVALID_KEY_BLOB;
     }
 
