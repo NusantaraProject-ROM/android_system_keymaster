@@ -19,6 +19,7 @@
 
 #include <stdio.h>
 
+#include <keymaster/android_keymaster_messages.h>
 #include <keymaster/authorization_set.h>
 
 namespace keymaster {
@@ -120,15 +121,31 @@ class KeymasterEnforcement {
     virtual bool auth_token_timed_out(const hw_auth_token_t& token, uint32_t timeout) const = 0;
 
     /*
+     * Get current time in milliseconds from some starting point.  This value is used to compute
+     * relative times between events.  It must be monotonically increasing, and must not skip or
+     * lag.  It need not have any relation to any external time standard (other than the duration of
+     * "second").
+     *
+     * On Linux systems, it's recommended to use clock_gettime(CLOCK_BOOTTIME, ...) to implement
+     * this method.  On non-Linux POSIX systems, CLOCK_MONOTONIC is good, assuming the device does
+     * not suspend.
+     */
+    virtual uint64_t get_current_time_ms() const = 0;
+
+    /*
      * Get current time in seconds from some starting point.  This value is used to compute relative
      * times between events.  It must be monotonically increasing, and must not skip or lag.  It
      * need not have any relation to any external time standard (other than the duration of
      * "second").
-     *
-     * On POSIX systems, it's recommended to use clock_gettime(CLOCK_MONOTONIC, ...) to implement
-     * this method.
      */
-    virtual uint32_t get_current_time() const = 0;
+    uint32_t get_current_time() const {
+        return static_cast<uint32_t>(get_current_time_ms() / 1000);  // Will wrap every 136 years
+    }
+
+    /*
+     * Returns the security level of this implementation.
+     */
+    virtual keymaster_security_level_t SecurityLevel() const = 0;
 
     /*
      * Returns true if the specified auth_token has a valid signature, or if signature validation is
@@ -146,6 +163,12 @@ class KeymasterEnforcement {
      */
     virtual keymaster_error_t ComputeSharedHmac(const HmacSharingParametersArray& params_array,
                                                 KeymasterBlob* sharingCheck) = 0;
+
+    /**
+     * Verify authorizations for another Keymaster instance.
+     */
+    virtual VerifyAuthorizationResponse
+    VerifyAuthorization(const VerifyAuthorizationRequest& request) = 0;
 
     /**
      * Creates a key ID for use in subsequent calls to AuthorizeOperation.  AndroidKeymaster uses

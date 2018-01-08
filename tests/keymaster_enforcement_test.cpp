@@ -40,7 +40,7 @@ class TestKeymasterEnforcement : public SoftKeymasterEnforcement {
     }
     using KeymasterEnforcement::AuthorizeOperation;
 
-    uint32_t get_current_time() const override { return current_time_; }
+    uint64_t get_current_time_ms() const override { return current_time_ * 1000; }
     bool activation_date_valid(uint64_t activation_date) const override {
         // Convert java date to time_t, non-portably.
         time_t activation_time = activation_date / 1000;
