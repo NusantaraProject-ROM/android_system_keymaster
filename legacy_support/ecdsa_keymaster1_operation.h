@@ -38,7 +38,6 @@ class EcdsaKeymaster1WrappedOperation {
 
     keymaster_error_t Begin(EVP_PKEY* ecdsa_key, const AuthorizationSet& input_params);
     keymaster_error_t PrepareFinish(EVP_PKEY* ecdsa_key, const AuthorizationSet& input_params);
-    void Finish() { operation_handle_ = 0; }
     keymaster_error_t Abort();
 
     keymaster_error_t GetError(EVP_PKEY* ecdsa_key);
@@ -79,8 +78,6 @@ template <typename BaseOperation> class EcdsaKeymaster1Operation : public BaseOp
         error = super::Finish(input_params, input, signature, output_params, output);
         if (wrapped_operation_.GetError(super::ecdsa_key_) != KM_ERROR_OK)
             error = wrapped_operation_.GetError(super::ecdsa_key_);
-        if (error == KM_ERROR_OK)
-            wrapped_operation_.Finish();
         return error;
     }
 
