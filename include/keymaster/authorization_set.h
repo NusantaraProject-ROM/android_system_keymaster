@@ -515,12 +515,14 @@ class AuthorizationSetBuilder {
     AuthorizationSetBuilder& RsaKey(uint32_t key_size, uint64_t public_exponent);
     AuthorizationSetBuilder& EcdsaKey(uint32_t key_size);
     AuthorizationSetBuilder& AesKey(uint32_t key_size);
+    AuthorizationSetBuilder& TripleDesKey(uint32_t key_size);
     AuthorizationSetBuilder& HmacKey(uint32_t key_size);
 
     AuthorizationSetBuilder& RsaSigningKey(uint32_t key_size, uint64_t public_exponent);
     AuthorizationSetBuilder& RsaEncryptionKey(uint32_t key_size, uint64_t public_exponent);
     AuthorizationSetBuilder& EcdsaSigningKey(uint32_t key_size);
     AuthorizationSetBuilder& AesEncryptionKey(uint32_t key_size);
+    AuthorizationSetBuilder& TripleDesEncryptionKey(uint32_t key_size);
 
     AuthorizationSetBuilder& SigningKey();
     AuthorizationSetBuilder& EncryptionKey();
@@ -570,6 +572,11 @@ inline AuthorizationSetBuilder& AuthorizationSetBuilder::AesKey(uint32_t key_siz
     return Authorization(TAG_KEY_SIZE, key_size);
 }
 
+inline AuthorizationSetBuilder& AuthorizationSetBuilder::TripleDesKey(uint32_t key_size) {
+    Authorization(TAG_ALGORITHM, KM_ALGORITHM_TRIPLE_DES);
+    return Authorization(TAG_KEY_SIZE, key_size);
+}
+
 inline AuthorizationSetBuilder& AuthorizationSetBuilder::HmacKey(uint32_t key_size) {
     Authorization(TAG_ALGORITHM, KM_ALGORITHM_HMAC);
     Authorization(TAG_KEY_SIZE, key_size);
@@ -595,6 +602,11 @@ inline AuthorizationSetBuilder& AuthorizationSetBuilder::EcdsaSigningKey(uint32_
 
 inline AuthorizationSetBuilder& AuthorizationSetBuilder::AesEncryptionKey(uint32_t key_size) {
     AesKey(key_size);
+    return EncryptionKey();
+}
+
+inline AuthorizationSetBuilder& AuthorizationSetBuilder::TripleDesEncryptionKey(uint32_t key_size) {
+    TripleDesKey(key_size);
     return EncryptionKey();
 }
 

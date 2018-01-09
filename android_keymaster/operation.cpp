@@ -52,6 +52,7 @@ inline bool is_public_key_algorithm(keymaster_algorithm_t algorithm) {
     switch (algorithm) {
     case KM_ALGORITHM_HMAC:
     case KM_ALGORITHM_AES:
+    case KM_ALGORITHM_TRIPLE_DES:
         return false;
     case KM_ALGORITHM_RSA:
     case KM_ALGORITHM_EC:

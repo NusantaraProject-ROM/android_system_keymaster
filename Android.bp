@@ -100,6 +100,8 @@ cc_library_shared {
         "km_openssl/rsa_operation.cpp",
         "km_openssl/software_random_source.cpp",
         "km_openssl/symmetric_key.cpp",
+        "km_openssl/triple_des_key.cpp",
+        "km_openssl/triple_des_operation.cpp",
         "km_openssl/wrapped_key.cpp",
     ],
 

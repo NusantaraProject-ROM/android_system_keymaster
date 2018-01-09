@@ -656,6 +656,27 @@ void Keymaster2Test::CheckAesCtrTestVector(const string& key, const string& nonc
     EXPECT_EQ(expected_ciphertext, ciphertext);
 }
 
+void Keymaster2Test::CheckTripleDesTestVector(keymaster_purpose_t purpose,
+                                              keymaster_block_mode_t block_mode,
+                                              keymaster_padding_t padding_mode, const string& key,
+                                              const string& iv, const string& input,
+                                              const string& expected_output) {
+    auto authset = AuthorizationSetBuilder()
+                       .TripleDesEncryptionKey(key.size() * 7)
+                       .Authorization(TAG_BLOCK_MODE, block_mode)
+                       .Padding(padding_mode);
+    if (iv.size()) authset.Authorization(TAG_CALLER_NONCE);
+
+    ASSERT_EQ(KM_ERROR_OK, ImportKey(authset, KM_KEY_FORMAT_RAW, key));
+
+    AuthorizationSet begin_params(client_params()), update_params, output_params;
+    if (iv.size()) begin_params.push_back(TAG_NONCE, iv.data(), iv.size());
+    begin_params.push_back(TAG_BLOCK_MODE, block_mode);
+    begin_params.push_back(TAG_PADDING, padding_mode);
+    string output = ProcessMessage(purpose, input, begin_params, update_params, &output_params);
+    EXPECT_EQ(expected_output, output);
+}
+
 AuthorizationSet Keymaster2Test::hw_enforced() {
     return AuthorizationSet(characteristics_.hw_enforced);
 }

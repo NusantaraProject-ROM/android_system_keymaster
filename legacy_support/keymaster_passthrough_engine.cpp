@@ -14,9 +14,9 @@
 ** See the License for the specific language governing permissions and
 ** limitations under the License.
 */
+#include "keymaster_passthrough_operation.h"
 #include <keymaster/legacy_support/keymaster_passthrough_engine.h>
 #include <keymaster/legacy_support/keymaster_passthrough_key.h>
-#include "keymaster_passthrough_operation.h"
 
 #include <hardware/keymaster1.h>
 #include <hardware/keymaster2.h>
@@ -38,25 +38,41 @@ namespace keymaster {
 template <typename KeymasterDeviceType>
 class TKeymasterPassthroughEngine : public KeymasterPassthroughEngine {
     using opfactory_t = KeymasterPassthroughOperationFactory<KeymasterDeviceType>;
+
   public:
     /**
      * The engine takes ownership of the device, and will close it during destruction.
      */
     explicit TKeymasterPassthroughEngine(const KeymasterDeviceType* km_device)
         : km_device_(km_device) {
-        rsa_encrypt_op_factory_.reset(new opfactory_t(KM_ALGORITHM_RSA, KM_PURPOSE_ENCRYPT, km_device_));
-        rsa_decrypt_op_factory_.reset(new opfactory_t(KM_ALGORITHM_RSA, KM_PURPOSE_DECRYPT, km_device_));
+        rsa_encrypt_op_factory_.reset(
+            new opfactory_t(KM_ALGORITHM_RSA, KM_PURPOSE_ENCRYPT, km_device_));
+        rsa_decrypt_op_factory_.reset(
+            new opfactory_t(KM_ALGORITHM_RSA, KM_PURPOSE_DECRYPT, km_device_));
         rsa_sign_op_factory_.reset(new opfactory_t(KM_ALGORITHM_RSA, KM_PURPOSE_SIGN, km_device_));
-        rsa_verify_op_factory_.reset(new opfactory_t(KM_ALGORITHM_RSA, KM_PURPOSE_VERIFY, km_device_));
-        ec_encrypt_op_factory_.reset(new opfactory_t(KM_ALGORITHM_EC, KM_PURPOSE_ENCRYPT, km_device_));
-        ec_decrypt_op_factory_.reset(new opfactory_t(KM_ALGORITHM_EC, KM_PURPOSE_DECRYPT, km_device_));
+        rsa_verify_op_factory_.reset(
+            new opfactory_t(KM_ALGORITHM_RSA, KM_PURPOSE_VERIFY, km_device_));
+        ec_encrypt_op_factory_.reset(
+            new opfactory_t(KM_ALGORITHM_EC, KM_PURPOSE_ENCRYPT, km_device_));
+        ec_decrypt_op_factory_.reset(
+            new opfactory_t(KM_ALGORITHM_EC, KM_PURPOSE_DECRYPT, km_device_));
         ec_sign_op_factory_.reset(new opfactory_t(KM_ALGORITHM_EC, KM_PURPOSE_SIGN, km_device_));
-        ec_verify_op_factory_.reset(new opfactory_t(KM_ALGORITHM_EC, KM_PURPOSE_VERIFY, km_device_));
-        ec_derive_op_factory_.reset(new opfactory_t(KM_ALGORITHM_EC, KM_PURPOSE_DERIVE_KEY, km_device_));
-        aes_encrypt_op_factory_.reset(new opfactory_t(KM_ALGORITHM_AES, KM_PURPOSE_ENCRYPT, km_device_));
-        aes_decrypt_op_factory_.reset(new opfactory_t(KM_ALGORITHM_AES, KM_PURPOSE_DECRYPT, km_device_));
-        hmac_sign_op_factory_.reset(new opfactory_t(KM_ALGORITHM_HMAC, KM_PURPOSE_SIGN, km_device_));
-        hmac_verify_op_factory_.reset(new opfactory_t(KM_ALGORITHM_HMAC, KM_PURPOSE_VERIFY, km_device_));
+        ec_verify_op_factory_.reset(
+            new opfactory_t(KM_ALGORITHM_EC, KM_PURPOSE_VERIFY, km_device_));
+        ec_derive_op_factory_.reset(
+            new opfactory_t(KM_ALGORITHM_EC, KM_PURPOSE_DERIVE_KEY, km_device_));
+        aes_encrypt_op_factory_.reset(
+            new opfactory_t(KM_ALGORITHM_AES, KM_PURPOSE_ENCRYPT, km_device_));
+        aes_decrypt_op_factory_.reset(
+            new opfactory_t(KM_ALGORITHM_AES, KM_PURPOSE_DECRYPT, km_device_));
+        triple_des_encrypt_op_factory_.reset(
+            new opfactory_t(KM_ALGORITHM_TRIPLE_DES, KM_PURPOSE_ENCRYPT, km_device_));
+        triple_des_decrypt_op_factory_.reset(
+            new opfactory_t(KM_ALGORITHM_TRIPLE_DES, KM_PURPOSE_DECRYPT, km_device_));
+        hmac_sign_op_factory_.reset(
+            new opfactory_t(KM_ALGORITHM_HMAC, KM_PURPOSE_SIGN, km_device_));
+        hmac_verify_op_factory_.reset(
+            new opfactory_t(KM_ALGORITHM_HMAC, KM_PURPOSE_VERIFY, km_device_));
     }
     virtual ~TKeymasterPassthroughEngine() {
         // QUIRK: we only take ownership if this is a KM2 device.
@@ -138,8 +154,17 @@ class TKeymasterPassthroughEngine : public KeymasterPassthroughEngine {
             default:
                 return nullptr;
             }
+        case KM_ALGORITHM_TRIPLE_DES:
+            switch (purpose) {
+            case KM_PURPOSE_ENCRYPT:
+                return triple_des_encrypt_op_factory_.get();
+            case KM_PURPOSE_DECRYPT:
+                return triple_des_decrypt_op_factory_.get();
+            default:
+                return nullptr;
+            }
         case KM_ALGORITHM_HMAC:
-            switch(purpose) {
+            switch (purpose) {
             case KM_PURPOSE_SIGN:
                 return hmac_sign_op_factory_.get();
             case KM_PURPOSE_VERIFY:
@@ -168,6 +193,8 @@ class TKeymasterPassthroughEngine : public KeymasterPassthroughEngine {
     std::unique_ptr<opfactory_t> ec_derive_op_factory_;
     std::unique_ptr<opfactory_t> aes_encrypt_op_factory_;
     std::unique_ptr<opfactory_t> aes_decrypt_op_factory_;
+    std::unique_ptr<opfactory_t> triple_des_encrypt_op_factory_;
+    std::unique_ptr<opfactory_t> triple_des_decrypt_op_factory_;
     std::unique_ptr<opfactory_t> hmac_sign_op_factory_;
     std::unique_ptr<opfactory_t> hmac_verify_op_factory_;
 };

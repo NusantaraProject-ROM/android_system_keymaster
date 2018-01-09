@@ -3376,6 +3376,500 @@ TEST_P(EncryptionOperationsTest, AesGcmCorruptTag) {
     EXPECT_EQ(0, GetParam()->keymaster0_calls());
 }
 
+TEST_P(EncryptionOperationsTest, TripleDesEcbRoundTripSuccess) {
+    auto auths = AuthorizationSetBuilder()
+                     .TripleDesEncryptionKey(112)
+                     .Authorization(TAG_BLOCK_MODE, KM_MODE_ECB)
+                     .Padding(KM_PAD_NONE);
+
+    ASSERT_EQ(KM_ERROR_OK, GenerateKey(auths));
+    // Two-block message.
+    string message = "1234567890123456";
+    string ciphertext1 = EncryptMessage(message, KM_MODE_ECB, KM_PAD_NONE);
+    EXPECT_EQ(message.size(), ciphertext1.size());
+
+    string ciphertext2 = EncryptMessage(string(message), KM_MODE_ECB, KM_PAD_NONE);
+    EXPECT_EQ(message.size(), ciphertext2.size());
+
+    // ECB is deterministic.
+    EXPECT_EQ(ciphertext1, ciphertext2);
+
+    string plaintext = DecryptMessage(ciphertext1, KM_MODE_ECB, KM_PAD_NONE);
+    EXPECT_EQ(message, plaintext);
+}
+
+TEST_P(EncryptionOperationsTest, TripleDesEcbNotAuthorized) {
+    ASSERT_EQ(KM_ERROR_OK, GenerateKey(AuthorizationSetBuilder()
+                                           .TripleDesEncryptionKey(112)
+                                           .Authorization(TAG_BLOCK_MODE, KM_MODE_CBC)
+                                           .Padding(KM_PAD_NONE)));
+    // Two-block message.
+    string message = "1234567890123456";
+    AuthorizationSet begin_params(client_params());
+    begin_params.push_back(TAG_BLOCK_MODE, KM_MODE_ECB);
+    begin_params.push_back(TAG_PADDING, KM_PAD_NONE);
+    EXPECT_EQ(KM_ERROR_INCOMPATIBLE_BLOCK_MODE, BeginOperation(KM_PURPOSE_ENCRYPT, begin_params));
+}
+
+TEST_P(EncryptionOperationsTest, TripleDesEcbNoPaddingWrongInputSize) {
+    ASSERT_EQ(KM_ERROR_OK, GenerateKey(AuthorizationSetBuilder()
+                                           .TripleDesEncryptionKey(112)
+                                           .Authorization(TAG_BLOCK_MODE, KM_MODE_ECB)
+                                           .Padding(KM_PAD_NONE)));
+    // Message is slightly shorter than two blocks.
+    string message = "123456789012345";
+
+    AuthorizationSet begin_params(client_params());
+    begin_params.push_back(TAG_BLOCK_MODE, KM_MODE_ECB);
+    begin_params.push_back(TAG_PADDING, KM_PAD_NONE);
+    EXPECT_EQ(KM_ERROR_OK, BeginOperation(KM_PURPOSE_ENCRYPT, begin_params));
+    string ciphertext;
+    EXPECT_EQ(KM_ERROR_INVALID_INPUT_LENGTH, FinishOperation(message, "", &ciphertext));
+}
+
+TEST_P(EncryptionOperationsTest, TripleDesEcbPkcs7Padding) {
+    ASSERT_EQ(KM_ERROR_OK, GenerateKey(AuthorizationSetBuilder()
+                                           .TripleDesEncryptionKey(112)
+                                           .Authorization(TAG_BLOCK_MODE, KM_MODE_ECB)
+                                           .Authorization(TAG_PADDING, KM_PAD_PKCS7)));
+
+    // Try various message lengths; all should work.
+    for (size_t i = 0; i < 32; ++i) {
+        string message(i, 'a');
+        string ciphertext = EncryptMessage(message, KM_MODE_ECB, KM_PAD_PKCS7);
+        EXPECT_EQ(i + 8 - (i % 8), ciphertext.size());
+        string plaintext = DecryptMessage(ciphertext, KM_MODE_ECB, KM_PAD_PKCS7);
+        EXPECT_EQ(message, plaintext);
+    }
+}
+
+TEST_P(EncryptionOperationsTest, TripleDesEcbNoPaddingKeyWithPkcs7Padding) {
+    ASSERT_EQ(KM_ERROR_OK, GenerateKey(AuthorizationSetBuilder()
+                                           .TripleDesEncryptionKey(112)
+                                           .Authorization(TAG_BLOCK_MODE, KM_MODE_ECB)
+                                           .Authorization(TAG_PADDING, KM_PAD_NONE)));
+
+    // Try various message lengths; all should fail.
+    for (size_t i = 0; i < 32; ++i) {
+        AuthorizationSet begin_params(client_params());
+        begin_params.push_back(TAG_BLOCK_MODE, KM_MODE_ECB);
+        begin_params.push_back(TAG_PADDING, KM_PAD_PKCS7);
+        EXPECT_EQ(KM_ERROR_INCOMPATIBLE_PADDING_MODE,
+                  BeginOperation(KM_PURPOSE_ENCRYPT, begin_params));
+    }
+}
+
+TEST_P(EncryptionOperationsTest, TripleDesEcbPkcs7PaddingCorrupted) {
+    ASSERT_EQ(KM_ERROR_OK, GenerateKey(AuthorizationSetBuilder()
+                                           .TripleDesEncryptionKey(112)
+                                           .Authorization(TAG_BLOCK_MODE, KM_MODE_ECB)
+                                           .Authorization(TAG_PADDING, KM_PAD_PKCS7)));
+
+    string message = "a";
+    string ciphertext = EncryptMessage(message, KM_MODE_ECB, KM_PAD_PKCS7);
+    EXPECT_EQ(8U, ciphertext.size());
+    EXPECT_NE(ciphertext, message);
+    ++ciphertext[ciphertext.size() / 2];
+
+    AuthorizationSet begin_params(client_params());
+    begin_params.push_back(TAG_BLOCK_MODE, KM_MODE_ECB);
+    begin_params.push_back(TAG_PADDING, KM_PAD_PKCS7);
+    EXPECT_EQ(KM_ERROR_OK, BeginOperation(KM_PURPOSE_DECRYPT, begin_params));
+    string plaintext;
+    size_t input_consumed;
+    EXPECT_EQ(KM_ERROR_OK, UpdateOperation(ciphertext, &plaintext, &input_consumed));
+    EXPECT_EQ(ciphertext.size(), input_consumed);
+    EXPECT_EQ(KM_ERROR_INVALID_ARGUMENT, FinishOperation(&plaintext));
+}
+
+struct TripleDesTestVector {
+    const char* name;
+    const keymaster_purpose_t purpose;
+    const keymaster_block_mode_t block_mode;
+    const keymaster_padding_t padding_mode;
+    const char* key;
+    const char* iv;
+    const char* input;
+    const char* output;
+};
+
+// These test vectors are from NIST CAVP, plus a few custom variants to test padding, since all of
+// the NIST vectors are multiples of the block size.
+static const TripleDesTestVector kTripleDesTestVectors[] = {
+    {
+        "TECBMMT2 Encrypt 0", KM_PURPOSE_ENCRYPT, KM_MODE_ECB, KM_PAD_NONE,
+        "ad192fd064b5579e7a4fb3c8f794f22a",  // key
+        "",                                  // IV
+        "13bad542f3652d67",                  // input
+        "908e543cf2cb254f",                  // output
+    },
+    {
+        "TECBMMT2 Encrypt 0 PKCS7", KM_PURPOSE_ENCRYPT, KM_MODE_ECB, KM_PAD_PKCS7,
+        "ad192fd064b5579e7a4fb3c8f794f22a",  // key
+        "",                                  // IV
+        "13bad542f3652d6700",                // input
+        "908e543cf2cb254fc40165289a89008c",  // output
+    },
+    {
+        "TECBMMT2 Encrypt 0 PKCS7 decrypted", KM_PURPOSE_DECRYPT, KM_MODE_ECB, KM_PAD_PKCS7,
+        "ad192fd064b5579e7a4fb3c8f794f22a",  // key
+        "",                                  // IV
+        "908e543cf2cb254fc40165289a89008c",  // input
+        "13bad542f3652d6700",                // output
+    },
+    {
+        "TECBMMT2 Encrypt 1", KM_PURPOSE_ENCRYPT, KM_MODE_ECB, KM_PAD_NONE,
+        "259df16e7af804fe83b90e9bf7c7e557",  // key
+        "",                                  // IV
+        "a4619c433bbd6787c07c81728f9ac9fa",  // input
+        "9e06de155c483c6bcfd834dbc8bd5830",  // output
+    },
+    {
+        "TECBMMT2 Decrypt 0", KM_PURPOSE_DECRYPT, KM_MODE_ECB, KM_PAD_NONE,
+        "b32ff42092024adf2076b9d3d9f19e6d",  // key
+        "",                                  // IV
+        "2f3f2a49bba807a5",                  // input
+        "2249973fa135fb52",                  // output
+    },
+    {
+        "TECBMMT2 Decrypt 1", KM_PURPOSE_DECRYPT, KM_MODE_ECB, KM_PAD_NONE,
+        "023dfbe6621aa17cc219eae9cdecd923",  // key
+        "",                                  // IV
+        "54045dc71d8d565b227ec19f06fef912",  // input
+        "9b071622181e6412de6066429401410d",  // output
+    },
+    {
+        "TECBMMT3 Encrypt 0", KM_PURPOSE_ENCRYPT, KM_MODE_ECB, KM_PAD_NONE,
+        "a2b5bc67da13dc92cd9d344aa238544a0e1fa79ef76810cd",  // key
+        "",                                                  // IV
+        "329d86bdf1bc5af4",                                  // input
+        "d946c2756d78633f",                                  // output
+    },
+    {
+        "TECBMMT3 Encrypt 1", KM_PURPOSE_ENCRYPT, KM_MODE_ECB, KM_PAD_NONE,
+        "49e692290d2a5e46bace79b9648a4c5d491004c262dc9d49",  // key
+        "",                                                  // IV
+        "6b1540781b01ce1997adae102dbf3c5b",                  // input
+        "4d0dc182d6e481ac4a3dc6ab6976ccae",                  // output
+    },
+    {
+        "TECBMMT3 Decrypt 0", KM_PURPOSE_DECRYPT, KM_MODE_ECB, KM_PAD_NONE,
+        "52daec2ac7dc1958377392682f37860b2cc1ea2304bab0e9",  // key
+        "",                                                  // IV
+        "6daad94ce08acfe7",                                  // input
+        "660e7d32dcc90e79",                                  // output
+    },
+    {
+        "TECBMMT3 Decrypt 1", KM_PURPOSE_DECRYPT, KM_MODE_ECB, KM_PAD_NONE,
+        "7f8fe3d3f4a48394fb682c2919926d6ddfce8932529229ce",  // key
+        "",                                                  // IV
+        "e9653a0a1f05d31b9acd12d73aa9879d",                  // input
+        "9b2ae9d998efe62f1b592e7e1df8ff38",                  // output
+    },
+    {
+        "TCBCMMT2 Encrypt 0", KM_PURPOSE_ENCRYPT, KM_MODE_CBC, KM_PAD_NONE,
+        "34a41a8c293176c1b30732ecfe38ae8a",  // key
+        "f55b4855228bd0b4",                  // IV
+        "7dd880d2a9ab411c",                  // input
+        "c91892948b6cadb4",                  // output
+    },
+    {
+        "TCBCMMT2 Encrypt 1", KM_PURPOSE_ENCRYPT, KM_MODE_CBC, KM_PAD_NONE,
+        "70a88fa1dfb9942fa77f40157ffef2ad",  // key
+        "ece08ce2fdc6ce80",                  // IV
+        "bc225304d5a3a5c9918fc5006cbc40cc",  // input
+        "27f67dc87af7ddb4b68f63fa7c2d454a",  // output
+    },
+    {
+        "TCBCMMT2 Decrypt 0", KM_PURPOSE_DECRYPT, KM_MODE_CBC, KM_PAD_NONE,
+        "4ff47fda89209bda8c85f7fe80192007",  // key
+        "d5bc4891dabe48b9",                  // IV
+        "7e154b28c353adef",                  // input
+        "712b961ea9a1d0af",                  // output
+    },
+    {
+        "TCBCMMT2 Decrypt 1", KM_PURPOSE_DECRYPT, KM_MODE_CBC, KM_PAD_NONE,
+        "464092cdbf736d38fb1fe6a12a94ae0e",  // key
+        "5423455f00023b01",                  // IV
+        "3f6050b74ed64416bc23d53b0469ed7a",  // input
+        "9cbe7d1b5cdd1864c3095ba810575960",  // output
+    },
+    {
+        "TCBCMMT3 Encrypt 0", KM_PURPOSE_ENCRYPT, KM_MODE_CBC, KM_PAD_NONE,
+        "b5cb1504802326c73df186e3e352a20de643b0d63ee30e37",  // key
+        "43f791134c5647ba",                                  // IV
+        "dcc153cef81d6f24",                                  // input
+        "92538bd8af18d3ba",                                  // output
+    },
+    {
+        "TCBCMMT3 Encrypt 1", KM_PURPOSE_ENCRYPT, KM_MODE_CBC, KM_PAD_NONE,
+        "a49d7564199e97cb529d2c9d97bf2f98d35edf57ba1f7358",  // key
+        "c2e999cb6249023c",                                  // IV
+        "c689aee38a301bb316da75db36f110b5",                  // input
+        "e9afaba5ec75ea1bbe65506655bb4ecb",                  // output
+    },
+    {
+        "TCBCMMT3 Encrypt 1 PKCS7 variant", KM_PURPOSE_ENCRYPT, KM_MODE_CBC, KM_PAD_PKCS7,
+        "a49d7564199e97cb529d2c9d97bf2f98d35edf57ba1f7358",  // key
+        "c2e999cb6249023c",                                  // IV
+        "c689aee38a301bb316da75db36f110b500",                // input
+        "e9afaba5ec75ea1bbe65506655bb4ecb825aa27ec0656156",  // output
+    },
+    {
+        "TCBCMMT3 Encrypt 1 PKCS7 decrypted", KM_PURPOSE_DECRYPT, KM_MODE_CBC, KM_PAD_PKCS7,
+        "a49d7564199e97cb529d2c9d97bf2f98d35edf57ba1f7358",  // key
+        "c2e999cb6249023c",                                  // IV
+        "e9afaba5ec75ea1bbe65506655bb4ecb825aa27ec0656156",  // input
+        "c689aee38a301bb316da75db36f110b500",                // output
+    },
+    {
+        "TCBCMMT3 Decrypt 0", KM_PURPOSE_DECRYPT, KM_MODE_CBC, KM_PAD_NONE,
+        "5eb6040d46082c7aa7d06dfd08dfeac8c18364c1548c3ba1",  // key
+        "41746c7e442d3681",                                  // IV
+        "c53a7b0ec40600fe",                                  // input
+        "d4f00eb455de1034",                                  // output
+    },
+    {
+        "TCBCMMT3 Decrypt 1", KM_PURPOSE_DECRYPT, KM_MODE_CBC, KM_PAD_NONE,
+        "5b1cce7c0dc1ec49130dfb4af45785ab9179e567f2c7d549",  // key
+        "3982bc02c3727d45",                                  // IV
+        "6006f10adef52991fcc777a1238bbb65",                  // input
+        "edae09288e9e3bc05746d872b48e3b29",                  // output
+    },
+};
+
+TEST_P(EncryptionOperationsTest, TripleDesTestVector) {
+    for (auto& test : array_range(kTripleDesTestVectors)) {
+        SCOPED_TRACE(test.name);
+        CheckTripleDesTestVector(test.purpose, test.block_mode, test.padding_mode,
+                                 hex2str(test.key), hex2str(test.iv), hex2str(test.input),
+                                 hex2str(test.output));
+    }
+}
+
+TEST_P(EncryptionOperationsTest, TripleDesCbcRoundTripSuccess) {
+    ASSERT_EQ(KM_ERROR_OK, GenerateKey(AuthorizationSetBuilder()
+                                           .TripleDesEncryptionKey(112)
+                                           .Authorization(TAG_BLOCK_MODE, KM_MODE_CBC)
+                                           .Padding(KM_PAD_NONE)));
+    // Two-block message.
+    string message = "1234567890123456";
+    string iv1;
+    string ciphertext1 = EncryptMessage(message, KM_MODE_CBC, KM_PAD_NONE, &iv1);
+    EXPECT_EQ(message.size(), ciphertext1.size());
+
+    string iv2;
+    string ciphertext2 = EncryptMessage(message, KM_MODE_CBC, KM_PAD_NONE, &iv2);
+    EXPECT_EQ(message.size(), ciphertext2.size());
+
+    // IVs should be random, so ciphertexts should differ.
+    EXPECT_NE(iv1, iv2);
+    EXPECT_NE(ciphertext1, ciphertext2);
+
+    string plaintext = DecryptMessage(ciphertext1, KM_MODE_CBC, KM_PAD_NONE, iv1);
+    EXPECT_EQ(message, plaintext);
+
+    EXPECT_EQ(0, GetParam()->keymaster0_calls());
+}
+
+TEST_P(EncryptionOperationsTest, TripleDesCallerIv) {
+    ASSERT_EQ(KM_ERROR_OK, GenerateKey(AuthorizationSetBuilder()
+                                           .TripleDesEncryptionKey(112)
+                                           .Authorization(TAG_BLOCK_MODE, KM_MODE_CBC)
+                                           .Authorization(TAG_CALLER_NONCE)
+                                           .Padding(KM_PAD_NONE)));
+    string message = "1234567890123456";
+    string iv1;
+    // Don't specify IV, should get a random one.
+    string ciphertext1 = EncryptMessage(message, KM_MODE_CBC, KM_PAD_NONE, &iv1);
+    EXPECT_EQ(message.size(), ciphertext1.size());
+    EXPECT_EQ(8U, iv1.size());
+
+    string plaintext = DecryptMessage(ciphertext1, KM_MODE_CBC, KM_PAD_NONE, iv1);
+    EXPECT_EQ(message, plaintext);
+
+    // Now specify an IV, should also work.
+    AuthorizationSet input_params(client_params());
+    AuthorizationSet update_params;
+    AuthorizationSet output_params;
+    input_params.push_back(TAG_NONCE, "abcdefgh", 8);
+    input_params.push_back(TAG_BLOCK_MODE, KM_MODE_CBC);
+    input_params.push_back(TAG_PADDING, KM_PAD_NONE);
+    string ciphertext2 =
+        ProcessMessage(KM_PURPOSE_ENCRYPT, message, input_params, update_params, &output_params);
+
+    // Decrypt with correct IV.
+    plaintext = ProcessMessage(KM_PURPOSE_DECRYPT, ciphertext2, input_params, update_params,
+                               &output_params);
+    EXPECT_EQ(message, plaintext);
+
+    // Now try with wrong IV.
+    input_params.Reinitialize(client_params());
+    input_params.push_back(TAG_BLOCK_MODE, KM_MODE_CBC);
+    input_params.push_back(TAG_PADDING, KM_PAD_NONE);
+    input_params.push_back(TAG_NONCE, "aaaaaaaa", 8);
+    plaintext = ProcessMessage(KM_PURPOSE_DECRYPT, ciphertext2, input_params, update_params,
+                               &output_params);
+    EXPECT_NE(message, plaintext);
+}
+
+TEST_P(EncryptionOperationsTest, TripleDesCallerNonceProhibited) {
+    ASSERT_EQ(KM_ERROR_OK, GenerateKey(AuthorizationSetBuilder()
+                                           .TripleDesEncryptionKey(112)
+                                           .Authorization(TAG_BLOCK_MODE, KM_MODE_CBC)
+                                           .Padding(KM_PAD_NONE)));
+
+    string message = "12345678901234567890123456789012";
+    string iv1;
+    // Don't specify nonce, should get a random one.
+    string ciphertext1 = EncryptMessage(message, KM_MODE_CBC, KM_PAD_NONE, &iv1);
+    EXPECT_EQ(message.size(), ciphertext1.size());
+    EXPECT_EQ(8U, iv1.size());
+
+    string plaintext = DecryptMessage(ciphertext1, KM_MODE_CBC, KM_PAD_NONE, iv1);
+    EXPECT_EQ(message, plaintext);
+
+    // Now specify a nonce, should fail.
+    AuthorizationSet input_params(client_params());
+    AuthorizationSet update_params;
+    AuthorizationSet output_params;
+    input_params.push_back(TAG_NONCE, "abcdefgh", 8);
+    input_params.push_back(TAG_BLOCK_MODE, KM_MODE_CBC);
+    input_params.push_back(TAG_PADDING, KM_PAD_NONE);
+
+    EXPECT_EQ(KM_ERROR_CALLER_NONCE_PROHIBITED,
+              BeginOperation(KM_PURPOSE_ENCRYPT, input_params, &output_params));
+}
+
+TEST_P(EncryptionOperationsTest, TripleDesCbcNotAuthorized) {
+    ASSERT_EQ(KM_ERROR_OK, GenerateKey(AuthorizationSetBuilder()
+                                           .TripleDesEncryptionKey(112)
+                                           .Authorization(TAG_BLOCK_MODE, KM_MODE_ECB)
+                                           .Padding(KM_PAD_NONE)));
+    // Two-block message.
+    string message = "1234567890123456";
+    AuthorizationSet begin_params(client_params());
+    begin_params.push_back(TAG_BLOCK_MODE, KM_MODE_CBC);
+    begin_params.push_back(TAG_PADDING, KM_PAD_NONE);
+    EXPECT_EQ(KM_ERROR_INCOMPATIBLE_BLOCK_MODE, BeginOperation(KM_PURPOSE_ENCRYPT, begin_params));
+}
+
+TEST_P(EncryptionOperationsTest, TripleDesCbcNoPaddingWrongInputSize) {
+    ASSERT_EQ(KM_ERROR_OK, GenerateKey(AuthorizationSetBuilder()
+                                           .TripleDesEncryptionKey(112)
+                                           .Authorization(TAG_BLOCK_MODE, KM_MODE_CBC)
+                                           .Padding(KM_PAD_NONE)));
+    // Message is slightly shorter than two blocks.
+    string message = "123456789012345";
+
+    AuthorizationSet begin_params(client_params());
+    begin_params.push_back(TAG_BLOCK_MODE, KM_MODE_CBC);
+    begin_params.push_back(TAG_PADDING, KM_PAD_NONE);
+    AuthorizationSet output_params;
+    EXPECT_EQ(KM_ERROR_OK, BeginOperation(KM_PURPOSE_ENCRYPT, begin_params, &output_params));
+    string ciphertext;
+    EXPECT_EQ(KM_ERROR_INVALID_INPUT_LENGTH, FinishOperation(message, "", &ciphertext));
+}
+
+TEST_P(EncryptionOperationsTest, TripleDesCbcPkcs7Padding) {
+    ASSERT_EQ(KM_ERROR_OK, GenerateKey(AuthorizationSetBuilder()
+                                           .TripleDesEncryptionKey(112)
+                                           .Authorization(TAG_BLOCK_MODE, KM_MODE_CBC)
+                                           .Authorization(TAG_PADDING, KM_PAD_PKCS7)));
+
+    // Try various message lengths; all should work.
+    for (size_t i = 0; i < 32; ++i) {
+        string message(i, 'a');
+        string iv;
+        string ciphertext = EncryptMessage(message, KM_MODE_CBC, KM_PAD_PKCS7, &iv);
+        EXPECT_EQ(i + 8 - (i % 8), ciphertext.size());
+        string plaintext = DecryptMessage(ciphertext, KM_MODE_CBC, KM_PAD_PKCS7, iv);
+        EXPECT_EQ(message, plaintext);
+    }
+}
+
+TEST_P(EncryptionOperationsTest, TripleDesCbcNoPaddingKeyWithPkcs7Padding) {
+    ASSERT_EQ(KM_ERROR_OK, GenerateKey(AuthorizationSetBuilder()
+                                           .TripleDesEncryptionKey(112)
+                                           .Authorization(TAG_BLOCK_MODE, KM_MODE_CBC)
+                                           .Authorization(TAG_PADDING, KM_PAD_NONE)));
+
+    // Try various message lengths; all should fail.
+    for (size_t i = 0; i < 32; ++i) {
+        AuthorizationSet begin_params(client_params());
+        begin_params.push_back(TAG_BLOCK_MODE, KM_MODE_CBC);
+        begin_params.push_back(TAG_PADDING, KM_PAD_PKCS7);
+        EXPECT_EQ(KM_ERROR_INCOMPATIBLE_PADDING_MODE,
+                  BeginOperation(KM_PURPOSE_ENCRYPT, begin_params));
+    }
+}
+
+TEST_P(EncryptionOperationsTest, TripleDesCbcPkcs7PaddingCorrupted) {
+    ASSERT_EQ(KM_ERROR_OK, GenerateKey(AuthorizationSetBuilder()
+                                           .TripleDesEncryptionKey(112)
+                                           .Authorization(TAG_BLOCK_MODE, KM_MODE_CBC)
+                                           .Authorization(TAG_PADDING, KM_PAD_PKCS7)));
+
+    string message = "a";
+    string iv;
+    string ciphertext = EncryptMessage(message, KM_MODE_CBC, KM_PAD_PKCS7, &iv);
+    EXPECT_EQ(8U, ciphertext.size());
+    EXPECT_NE(ciphertext, message);
+    ++ciphertext[ciphertext.size() / 2];
+
+    AuthorizationSet begin_params(client_params());
+    begin_params.push_back(TAG_BLOCK_MODE, KM_MODE_CBC);
+    begin_params.push_back(TAG_PADDING, KM_PAD_PKCS7);
+    begin_params.push_back(TAG_NONCE, iv.data(), iv.size());
+    EXPECT_EQ(KM_ERROR_OK, BeginOperation(KM_PURPOSE_DECRYPT, begin_params));
+    string plaintext;
+    size_t input_consumed;
+    EXPECT_EQ(KM_ERROR_OK, UpdateOperation(ciphertext, &plaintext, &input_consumed));
+    EXPECT_EQ(ciphertext.size(), input_consumed);
+    EXPECT_EQ(KM_ERROR_INVALID_ARGUMENT, FinishOperation(&plaintext));
+}
+
+TEST_P(EncryptionOperationsTest, TripleDesCbcIncrementalNoPadding) {
+    ASSERT_EQ(KM_ERROR_OK, GenerateKey(AuthorizationSetBuilder()
+                                           .TripleDesEncryptionKey(112)
+                                           .Authorization(TAG_BLOCK_MODE, KM_MODE_CBC)
+                                           .Padding(KM_PAD_NONE)));
+
+    int increment = 7;
+    string message(240, 'a');
+    AuthorizationSet input_params(client_params());
+    input_params.push_back(TAG_BLOCK_MODE, KM_MODE_CBC);
+    input_params.push_back(TAG_PADDING, KM_PAD_NONE);
+    AuthorizationSet output_params;
+    EXPECT_EQ(KM_ERROR_OK, BeginOperation(KM_PURPOSE_ENCRYPT, input_params, &output_params));
+
+    string ciphertext;
+    size_t input_consumed;
+    for (size_t i = 0; i < message.size(); i += increment)
+        EXPECT_EQ(KM_ERROR_OK,
+                  UpdateOperation(message.substr(i, increment), &ciphertext, &input_consumed));
+    EXPECT_EQ(KM_ERROR_OK, FinishOperation(&ciphertext));
+    EXPECT_EQ(message.size(), ciphertext.size());
+
+    // Move TAG_NONCE into input_params
+    input_params.Reinitialize(output_params);
+    input_params.push_back(client_params());
+    input_params.push_back(TAG_BLOCK_MODE, KM_MODE_CBC);
+    input_params.push_back(TAG_PADDING, KM_PAD_NONE);
+    output_params.Clear();
+
+    EXPECT_EQ(KM_ERROR_OK, BeginOperation(KM_PURPOSE_DECRYPT, input_params, &output_params));
+    string plaintext;
+    for (size_t i = 0; i < ciphertext.size(); i += increment)
+        EXPECT_EQ(KM_ERROR_OK,
+                  UpdateOperation(ciphertext.substr(i, increment), &plaintext, &input_consumed));
+    EXPECT_EQ(KM_ERROR_OK, FinishOperation(&plaintext));
+    EXPECT_EQ(ciphertext.size(), plaintext.size());
+    EXPECT_EQ(message, plaintext);
+
+    EXPECT_EQ(0, GetParam()->keymaster0_calls());
+}
+
 typedef Keymaster2Test MaxOperationsTest;
 INSTANTIATE_TEST_CASE_P(AndroidKeymasterTest, MaxOperationsTest, test_params);
 

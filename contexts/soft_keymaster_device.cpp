@@ -694,7 +694,8 @@ bool SoftKeymasterDevice::RequiresSoftwareDigesting(keymaster_algorithm_t algori
 
     switch (algorithm) {
     case KM_ALGORITHM_AES:
-        LOG_D("Not performing software digesting for AES keys", algorithm);
+    case KM_ALGORITHM_TRIPLE_DES:
+        LOG_D("Not performing software digesting for algorithm %d", algorithm);
         return false;
     case KM_ALGORITHM_HMAC:
     case KM_ALGORITHM_RSA:

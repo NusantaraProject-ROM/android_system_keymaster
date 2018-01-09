@@ -72,6 +72,9 @@ KeyFactory* Keymaster1PassthroughContext::GetKeyFactory(keymaster_algorithm_t al
             result.reset(new Keymaster1ArbitrationFactory<HmacKeyFactory>(pt_engine_.get(),
                     KM_ALGORITHM_HMAC, device_, this, this));
             break;
+        case KM_ALGORITHM_TRIPLE_DES:
+            // Not supported by KM1.
+            return nullptr;
         }
     }
     return result.get();

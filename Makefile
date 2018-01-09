@@ -63,6 +63,8 @@ LDLIBS=-L$(BASE)/../boringssl/build/crypto -lcrypto -lpthread -lstdc++ -lgcov
 CPPSRCS=\
 	km_openssl/aes_key.cpp \
 	km_openssl/aes_operation.cpp \
+	km_openssl/triple_des_key.cpp \
+	km_openssl/triple_des_operation.cpp \
 	android_keymaster/android_keymaster.cpp \
 	android_keymaster/android_keymaster_messages.cpp \
 	tests/android_keymaster_messages_test.cpp \
@@ -353,6 +355,8 @@ tests/android_keymaster_test: tests/android_keymaster_test.o \
 	key_blob_utils/ocb_utils.o \
 	key_blob_utils/software_keyblobs.o \
 	km_openssl/aes_key.o \
+	km_openssl/aes_key.o \
+	km_openssl/aes_operation.o \
 	km_openssl/aes_operation.o \
 	km_openssl/asymmetric_key.o \
 	km_openssl/asymmetric_key_factory.o \
@@ -373,6 +377,8 @@ tests/android_keymaster_test: tests/android_keymaster_test.o \
 	km_openssl/soft_keymaster_enforcement.o \
 	km_openssl/software_random_source.o \
 	km_openssl/symmetric_key.o \
+	km_openssl/triple_des_key.o \
+	km_openssl/triple_des_operation.o \
 	km_openssl/wrapped_key.o \
 	legacy_support/ec_keymaster0_key.o \
 	legacy_support/ec_keymaster1_key.o \

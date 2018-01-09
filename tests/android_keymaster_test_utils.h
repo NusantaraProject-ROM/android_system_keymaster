@@ -292,6 +292,10 @@ class Keymaster2Test : public testing::TestWithParam<InstanceCreatorPtr> {
                                const std::string& expected_ciphertext);
     void CheckAesCtrTestVector(const std::string& key, const std::string& nonce,
                                const std::string& message, const std::string& expected_ciphertext);
+    void CheckTripleDesTestVector(keymaster_purpose_t purpose, keymaster_block_mode_t mode,
+                                  keymaster_padding_t padding, const std::string& key,
+                                  const std::string& iv, const std::string& message,
+                                  const std::string& expected_ciphertext);
     AuthorizationSet UserAuthParams();
     AuthorizationSet ClientParams();
 

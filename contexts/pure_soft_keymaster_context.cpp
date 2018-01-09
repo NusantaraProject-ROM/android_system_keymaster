@@ -39,6 +39,7 @@
 #include <keymaster/km_openssl/openssl_utils.h>
 #include <keymaster/km_openssl/rsa_key_factory.h>
 #include <keymaster/km_openssl/soft_keymaster_enforcement.h>
+#include <keymaster/km_openssl/triple_des_key.h>
 #include <keymaster/logger.h>
 #include <keymaster/operation.h>
 #include <keymaster/wrapped_key.h>
@@ -51,8 +52,9 @@ namespace keymaster {
 
 PureSoftKeymasterContext::PureSoftKeymasterContext()
     : rsa_factory_(new RsaKeyFactory(this)), ec_factory_(new EcKeyFactory(this)),
-      aes_factory_(new AesKeyFactory(this, this)), hmac_factory_(new HmacKeyFactory(this, this)),
-      os_version_(0), os_patchlevel_(0),
+      aes_factory_(new AesKeyFactory(this, this)),
+      tdes_factory_(new TripleDesKeyFactory(this, this)),
+      hmac_factory_(new HmacKeyFactory(this, this)), os_version_(0), os_patchlevel_(0),
       soft_keymaster_enforcement_(64, 64) {}
 
 PureSoftKeymasterContext::~PureSoftKeymasterContext() {}
@@ -77,6 +79,8 @@ KeyFactory* PureSoftKeymasterContext::GetKeyFactory(keymaster_algorithm_t algori
         return ec_factory_.get();
     case KM_ALGORITHM_AES:
         return aes_factory_.get();
+    case KM_ALGORITHM_TRIPLE_DES:
+        return tdes_factory_.get();
     case KM_ALGORITHM_HMAC:
         return hmac_factory_.get();
     default:

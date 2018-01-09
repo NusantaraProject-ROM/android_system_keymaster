@@ -120,6 +120,7 @@ class SoftKeymasterContext: public KeymasterContext, SoftwareKeyBlobMaker, Softw
     std::unique_ptr<KeyFactory> rsa_factory_;
     std::unique_ptr<KeyFactory> ec_factory_;
     std::unique_ptr<KeyFactory> aes_factory_;
+    std::unique_ptr<KeyFactory> tdes_factory_;
     std::unique_ptr<KeyFactory> hmac_factory_;
     keymaster1_device* km1_dev_;
     const KeymasterBlob root_of_trust_;

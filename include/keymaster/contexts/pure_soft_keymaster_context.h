@@ -94,6 +94,7 @@ class PureSoftKeymasterContext: public KeymasterContext,
     std::unique_ptr<KeyFactory> rsa_factory_;
     std::unique_ptr<KeyFactory> ec_factory_;
     std::unique_ptr<KeyFactory> aes_factory_;
+    std::unique_ptr<KeyFactory> tdes_factory_;
     std::unique_ptr<KeyFactory> hmac_factory_;
     uint32_t os_version_;
     uint32_t os_patchlevel_;
