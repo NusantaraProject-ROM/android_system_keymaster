@@ -72,6 +72,7 @@ CPPSRCS=\
 	km_openssl/asymmetric_key.cpp \
 	km_openssl/asymmetric_key_factory.cpp \
 	km_openssl/attestation_record.cpp \
+	km_openssl/block_cipher_operation.cpp \
 	tests/attestation_record_test.cpp \
 	key_blob_utils/auth_encrypted_key_blob.cpp \
 	android_keymaster/authorization_set.cpp \
@@ -376,6 +377,7 @@ tests/android_keymaster_test: tests/android_keymaster_test.o \
 	km_openssl/software_random_source.o \
 	contexts/soft_attestation_cert.o \
 	km_openssl/attestation_utils.o \
+	km_openssl/block_cipher_operation.o \
 	key_blob_utils/software_keyblobs.o \
 	$(BASE)/system/security/keystore/keyblob_utils.o \
 	$(GTEST_OBJS)

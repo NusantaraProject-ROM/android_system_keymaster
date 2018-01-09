@@ -80,6 +80,7 @@ cc_library_shared {
         "km_openssl/asymmetric_key.cpp",
         "km_openssl/asymmetric_key_factory.cpp",
         "km_openssl/attestation_record.cpp",
+        "km_openssl/block_cipher_operation.cpp",
         "km_openssl/ckdf.cpp",
         "km_openssl/ec_key.cpp",
         "km_openssl/ec_key_factory.cpp",
