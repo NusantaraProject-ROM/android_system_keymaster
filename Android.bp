@@ -43,7 +43,9 @@ cc_library_shared {
     clang_cflags: ["-fno-sanitize-coverage=edge,indirect-calls,8bit-counters,trace-cmp"],
 
     export_include_dirs: ["include"],
-
+    sanitize: {
+        integer_overflow: false,
+    },
 }
 
 // libkeymaster_portable contains almost everything needed for a keymaster
@@ -124,6 +126,9 @@ cc_library_shared {
     ],
 
     export_include_dirs: ["include"],
+    sanitize: {
+        integer_overflow: false,
+    },
 }
 
 // libsoftkeymaster provides a software-based keymaster HAL implementation.
