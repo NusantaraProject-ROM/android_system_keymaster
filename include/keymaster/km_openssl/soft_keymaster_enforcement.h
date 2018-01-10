@@ -18,25 +18,36 @@
 #ifndef INCLUDE_KEYMASTER_SOFT_KEYMASTER_ENFORCEMENT_H_
 #define INCLUDE_KEYMASTER_SOFT_KEYMASTER_ENFORCEMENT_H_
 
+#include <keymaster/android_keymaster_messages.h>
 #include <keymaster/keymaster_enforcement.h>
 
 namespace keymaster {
 
 class SoftKeymasterEnforcement : public KeymasterEnforcement {
-public:
-    SoftKeymasterEnforcement (uint32_t max_access_time_map_size, uint32_t max_access_count_map_size)
-            : KeymasterEnforcement(max_access_time_map_size, max_access_count_map_size) {}
-    virtual~SoftKeymasterEnforcement() {}
+  public:
+    SoftKeymasterEnforcement(uint32_t max_access_time_map_size, uint32_t max_access_count_map_size)
+        : KeymasterEnforcement(max_access_time_map_size, max_access_count_map_size) {}
+    virtual ~SoftKeymasterEnforcement() {}
     bool activation_date_valid(uint64_t /*activation_date*/) const override { return true; }
     bool expiration_date_passed(uint64_t /*expiration_date*/) const override { return false; }
-    bool auth_token_timed_out(const hw_auth_token_t& /*token*/, uint32_t /*timeout*/) const override {
+    bool auth_token_timed_out(const hw_auth_token_t& /*token*/,
+                              uint32_t /*timeout*/) const override {
         return false;
     }
     uint32_t get_current_time() const override;
     bool ValidateTokenSignature(const hw_auth_token_t& /*token*/) const override { return true; }
     bool CreateKeyId(const keymaster_key_blob_t& key_blob, km_id_t* keyid) const override;
+
+    keymaster_error_t GetHmacSharingParameters(HmacSharingParameters* params) override;
+    keymaster_error_t ComputeSharedHmac(const HmacSharingParametersArray& params_array,
+                                        KeymasterBlob* sharingCheck) override;
+
+  private:
+    bool have_saved_params_ = false;
+    HmacSharingParameters saved_params_;
+    KeymasterKeyBlob hmac_key_;
 };
 
-} // namespace keymaster
+}  // namespace keymaster
 
 #endif  // INCLUDE_KEYMASTER_SOFT_KEYMASTER_ENFORCEMENT_H_
