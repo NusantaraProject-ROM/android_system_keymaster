@@ -38,7 +38,6 @@ class RsaKeymaster1WrappedOperation {
 
     keymaster_error_t Begin(EVP_PKEY* rsa_key, const AuthorizationSet& input_params);
     keymaster_error_t PrepareFinish(EVP_PKEY* rsa_key, const AuthorizationSet& input_params);
-    void Finish() { operation_handle_ = 0; }
     keymaster_error_t Abort();
 
     keymaster_error_t GetError(EVP_PKEY* rsa_key);
@@ -79,8 +78,6 @@ template <typename BaseOperation> class RsaKeymaster1Operation : public BaseOper
         error = super::Finish(input_params, input, signature, output_params, output);
         if (wrapped_operation_.GetError(super::rsa_key_) != KM_ERROR_OK)
             error = wrapped_operation_.GetError(super::rsa_key_);
-        if (error == KM_ERROR_OK)
-            wrapped_operation_.Finish();
         return error;
     }
 
