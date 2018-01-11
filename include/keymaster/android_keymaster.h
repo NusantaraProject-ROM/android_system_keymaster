@@ -64,6 +64,9 @@ class AndroidKeymaster {
     void SupportedExportFormats(const SupportedExportFormatsRequest& request,
                                 SupportedExportFormatsResponse* response);
 
+    GetHmacSharingParametersResponse GetHmacSharingParameters();
+    ComputeSharedHmacResponse ComputeSharedHmac(const ComputeSharedHmacRequest& request);
+
     void AddRngEntropy(const AddEntropyRequest& request, AddEntropyResponse* response);
     void Configure(const ConfigureRequest& request, ConfigureResponse* response);
     void GenerateKey(const GenerateKeyRequest& request, GenerateKeyResponse* response);

@@ -30,28 +30,6 @@
 #include <keymaster/keymaster_enforcement.h>
 #include <keymaster/km_openssl/soft_keymaster_enforcement.h>
 
-using ::keymaster::AbortOperationRequest;
-using ::keymaster::AbortOperationResponse;
-using ::keymaster::AddEntropyRequest;
-using ::keymaster::AddEntropyResponse;
-using ::keymaster::AttestKeyRequest;
-using ::keymaster::AttestKeyResponse;
-using ::keymaster::AuthorizationSet;
-using ::keymaster::BeginOperationRequest;
-using ::keymaster::BeginOperationResponse;
-using ::keymaster::ExportKeyRequest;
-using ::keymaster::ExportKeyResponse;
-using ::keymaster::FinishOperationRequest;
-using ::keymaster::FinishOperationResponse;
-using ::keymaster::GenerateKeyRequest;
-using ::keymaster::GenerateKeyResponse;
-using ::keymaster::GetKeyCharacteristicsRequest;
-using ::keymaster::GetKeyCharacteristicsResponse;
-using ::keymaster::ImportKeyRequest;
-using ::keymaster::ImportKeyResponse;
-using ::keymaster::UpdateOperationRequest;
-using ::keymaster::UpdateOperationResponse;
-
 namespace keymaster {
 namespace V4_0 {
 namespace ng {
@@ -238,14 +216,37 @@ Return<void> AndroidKeymaster4Device::getHardwareInfo(getHardwareInfo_cb _hidl_c
 
 Return<void>
 AndroidKeymaster4Device::getHmacSharingParameters(getHmacSharingParameters_cb _hidl_cb) {
-    _hidl_cb(ErrorCode::UNIMPLEMENTED, {});
+    auto response = impl_->GetHmacSharingParameters();
+
+    ::android::hardware::keymaster::V4_0::HmacSharingParameters params;
+    params.seed.setToExternal(const_cast<uint8_t*>(response.params.seed.data),
+                              response.params.seed.data_length);
+    static_assert(sizeof(response.params.nonce) == params.nonce.size(), "Nonce sizes don't match");
+    memcpy(params.nonce.data(), response.params.nonce, params.nonce.size());
+    _hidl_cb(legacy_enum_conversion(response.error), params);
     return Void();
 }
 
-Return<void>
-AndroidKeymaster4Device::computeSharedHmac(const hidl_vec<HmacSharingParameters>& /* params */,
-                                           computeSharedHmac_cb _hidl_cb) {
-    _hidl_cb(ErrorCode::UNIMPLEMENTED, {});
+Return<void> AndroidKeymaster4Device::computeSharedHmac(
+    const hidl_vec<::android::hardware::keymaster::V4_0::HmacSharingParameters>& params,
+    computeSharedHmac_cb _hidl_cb) {
+    ComputeSharedHmacRequest request;
+    request.params_array.params_array = new keymaster::HmacSharingParameters[params.size()];
+    request.params_array.num_params = params.size();
+    for (size_t i = 0; i < params.size(); ++i) {
+        request.params_array.params_array[i].seed = {params[i].seed.data(), params[i].seed.size()};
+        static_assert(sizeof(request.params_array.params_array[i].nonce) ==
+                          decltype(params[i].nonce)::size(),
+                      "Nonce sizes don't match");
+        memcpy(request.params_array.params_array[i].nonce, params[i].nonce.data(),
+               params[i].nonce.size());
+    }
+
+    auto response = impl_->ComputeSharedHmac(request);
+    hidl_vec<uint8_t> sharing_check;
+    if (response.error == KM_ERROR_OK) sharing_check = kmBlob2hidlVec(response.sharing_check);
+
+    _hidl_cb(legacy_enum_conversion(response.error), sharing_check);
     return Void();
 }
 

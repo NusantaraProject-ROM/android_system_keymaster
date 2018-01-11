@@ -15,6 +15,7 @@
  */
 
 #include <fstream>
+#include <memory>
 #include <string>
 #include <vector>
 
@@ -48,6 +49,15 @@ int __android_log_print(int prio, const char* tag, const char* fmt) {
     return 0;
 }
 }  // extern "C"
+
+namespace {
+
+// For some reason std::make_unique isn't available.  Define make_unique.
+template <typename T, typename... Args> std::unique_ptr<T> make_unique(Args&&... args) {
+    return std::unique_ptr<T>(new T(std::forward<Args>(args)...));
+}
+
+}  // namespace
 
 namespace keymaster {
 namespace test {
@@ -1434,6 +1444,7 @@ TEST_P(VerificationOperationsTest, EcdsaAllDigestsAndKeySizes) {
     string signature;
 
     for (auto key_size : key_sizes) {
+        SCOPED_TRACE(testing::Message() << "Key size: " << key_size);
         AuthorizationSetBuilder builder;
         builder.EcdsaSigningKey(key_size);
         for (auto digest : digests)
@@ -1441,6 +1452,7 @@ TEST_P(VerificationOperationsTest, EcdsaAllDigestsAndKeySizes) {
         ASSERT_EQ(KM_ERROR_OK, GenerateKey(builder));
 
         for (auto digest : digests) {
+            SCOPED_TRACE(testing::Message() << "Digest: " << digest);
             SignMessage(message, &signature, digest);
             VerifyMessage(message, signature, digest);
         }
@@ -3254,7 +3266,7 @@ static bool verify_attestation_record(const string& challenge,
                                &att_keymaster_security_level, &att_challenge, &att_sw_enforced,
                                &att_tee_enforced, &att_unique_id));
 
-    EXPECT_EQ(1U, att_attestation_version);
+    EXPECT_EQ(2U, att_attestation_version);
     EXPECT_EQ(KM_SECURITY_LEVEL_SOFTWARE, att_attestation_security_level);
     EXPECT_EQ(expected_keymaster_version, att_keymaster_version);
     EXPECT_EQ(expected_keymaster_security_level, att_keymaster_security_level);
@@ -3310,7 +3322,7 @@ TEST_P(AttestationTest, RsaAttestation) {
         expected_keymaster_version = 0;
         expected_keymaster_security_level = KM_SECURITY_LEVEL_TRUSTED_ENVIRONMENT;
     } else {
-        expected_keymaster_version = 2;
+        expected_keymaster_version = 3;
         expected_keymaster_security_level = KM_SECURITY_LEVEL_SOFTWARE;
     }
 
@@ -3332,7 +3344,7 @@ TEST_P(AttestationTest, EcAttestation) {
         expected_keymaster_version = 0;
         expected_keymaster_security_level = KM_SECURITY_LEVEL_TRUSTED_ENVIRONMENT;
     } else {
-        expected_keymaster_version = 2;
+        expected_keymaster_version = 3;
         expected_keymaster_security_level = KM_SECURITY_LEVEL_SOFTWARE;
     }
 
@@ -3516,6 +3528,206 @@ TEST(SoftKeymasterWrapperTest, CheckKeymaster2Device) {
     // Close and clean up wrapper and wrapped
     sha256_only_fake_wrapper->keymaster_device()->common.close(
         sha256_only_fake_wrapper->hw_device());
+}
+
+class HmacKeySharingTest : public ::testing::Test {
+  protected:
+    using KeymasterVec = std::vector<std::unique_ptr<AndroidKeymaster>>;
+    using ParamsVec = std::vector<HmacSharingParameters>;
+    using ByteString = std::basic_string<uint8_t>;
+    using NonceVec = std::vector<ByteString>;
+    using ResponseVec = std::vector<ComputeSharedHmacResponse>;
+
+    KeymasterVec CreateKeymasters(size_t count) {
+        KeymasterVec keymasters;
+        for (size_t i = 0; i < count; ++i) {
+            keymasters.push_back(make_unique<AndroidKeymaster>(new TestKeymasterContext, 16));
+        }
+        return keymasters;
+    }
+
+    ParamsVec GetHmacSharingParameters(const KeymasterVec& keymasters) {
+        ParamsVec paramsVec;
+        for (auto& keymaster : keymasters) {
+            auto result = keymaster->GetHmacSharingParameters();
+            EXPECT_EQ(KM_ERROR_OK, result.error);
+            if (result.error == KM_ERROR_OK) paramsVec.push_back(move(result.params));
+        }
+        return paramsVec;
+    }
+
+    template <size_t N> ByteString ToByteString(const uint8_t (&a)[N]) { return ByteString(a, N); }
+
+    ByteString ToByteString(const keymaster_blob_t& b) { return ByteString(b.data, b.data_length); }
+
+    NonceVec CopyNonces(const ParamsVec& paramsVec) {
+        NonceVec nonces;
+        for (auto& param : paramsVec) {
+            nonces.push_back(ToByteString(param.nonce));
+        }
+        return nonces;
+    }
+
+    ResponseVec ComputeSharedHmac(const KeymasterVec& keymasters, const ParamsVec& paramsVec) {
+        ComputeSharedHmacRequest req;
+        req.params_array.params_array = const_cast<HmacSharingParameters*>(paramsVec.data());
+        auto prevent_deletion_of_paramsVec_data =
+            finally([&]() { req.params_array.params_array = nullptr; });
+        req.params_array.num_params = paramsVec.size();
+
+        ResponseVec responses;
+        for (auto& keymaster : keymasters) {
+            responses.push_back(keymaster->ComputeSharedHmac(req));
+        }
+
+        return responses;
+    }
+
+    bool VerifyResponses(const ByteString& expected, const ResponseVec& responses) {
+        for (auto& response : responses) {
+            EXPECT_EQ(KM_ERROR_OK, response.error);
+            auto this_sharing_check = ToByteString(response.sharing_check);
+            EXPECT_EQ(expected, this_sharing_check) << "Sharing check values should match.";
+            if (response.error != KM_ERROR_OK || expected != this_sharing_check) {
+                return false;
+            }
+        }
+        return true;
+    }
+};
+
+TEST_F(HmacKeySharingTest, GetParametersIdempotency) {
+    AndroidKeymaster keymaster(new TestKeymasterContext, 16);
+
+    ParamsVec paramsVec;
+
+    auto result1 = keymaster.GetHmacSharingParameters();
+    EXPECT_EQ(KM_ERROR_OK, result1.error);
+    paramsVec.push_back(std::move(result1.params));
+
+    auto result2 = keymaster.GetHmacSharingParameters();
+    EXPECT_EQ(KM_ERROR_OK, result2.error);
+    paramsVec.push_back(std::move(result2.params));
+
+    ASSERT_EQ(ToByteString(paramsVec[0].seed), ToByteString(paramsVec[1].seed))
+        << "A given keymaster should always return the same seed.";
+    EXPECT_EQ(ToByteString(paramsVec[0].nonce), ToByteString(paramsVec[1].nonce))
+        << "A given keymaster should always return the same nonce until restart.";
+}
+
+TEST_F(HmacKeySharingTest, ComputeSharedHmac) {
+    // ComputeSharedHmac should work with any number of participants; we just test 1 through 4.
+    for (size_t keymaster_count = 1; keymaster_count <= 4; ++keymaster_count) {
+        SCOPED_TRACE(testing::Message() << keymaster_count << " keymaster instances");
+
+        auto keymasters = CreateKeymasters(keymaster_count);
+        auto params = GetHmacSharingParameters(keymasters);
+        ASSERT_EQ(keymaster_count, params.size())
+            << "One or more keymasters failed to provide parameters.";
+
+        auto nonces = CopyNonces(params);
+        EXPECT_EQ(keymaster_count, nonces.size()) << "We should have a nonce per keymaster.";
+        std::sort(nonces.begin(), nonces.end());
+        std::unique(nonces.begin(), nonces.end());
+        EXPECT_EQ(keymaster_count, nonces.size()) << "Nonces should all be unique.";
+
+        auto responses = ComputeSharedHmac(keymasters, params);
+        ASSERT_EQ(keymaster_count, responses.size());
+
+        ASSERT_TRUE(VerifyResponses(ToByteString(responses[0].sharing_check), responses));
+    }
+}
+
+TEST_F(HmacKeySharingTest, ComputeSharedHmacTwice) {
+    for (size_t keymaster_count = 1; keymaster_count <= 4; ++keymaster_count) {
+        SCOPED_TRACE(testing::Message() << keymaster_count << " keymaster instances");
+
+        auto keymasters = CreateKeymasters(keymaster_count);
+        auto params = GetHmacSharingParameters(keymasters);
+        ASSERT_EQ(keymaster_count, params.size())
+            << "One or more keymasters failed to provide parameters.";
+
+        auto responses = ComputeSharedHmac(keymasters, params);
+        ASSERT_EQ(keymaster_count, responses.size());
+
+        ByteString sharing_check_value = ToByteString(responses[0].sharing_check);
+        ASSERT_TRUE(VerifyResponses(sharing_check_value, responses));
+
+        params = GetHmacSharingParameters(keymasters);
+        ASSERT_EQ(keymaster_count, params.size())
+            << "One or more keymasters failed to provide parameters.";
+        responses = ComputeSharedHmac(keymasters, params);
+
+        // Verify against first check value; we should get the same one every time, because each
+        // keymaster instance returns the same seed every time, and the same nonce until restart.
+        ASSERT_TRUE(VerifyResponses(sharing_check_value, responses));
+    }
+}
+
+TEST_F(HmacKeySharingTest, ComputeSharedHmacCorruptNonce) {
+    constexpr size_t keymaster_count = 4;
+    auto keymasters = CreateKeymasters(keymaster_count);
+
+    auto params = GetHmacSharingParameters(keymasters);
+    ASSERT_EQ(keymaster_count, params.size())
+        << "One or more keymasters failed to provide parameters.";
+
+    // All should be well in the normal case
+    auto responses = ComputeSharedHmac(keymasters, params);
+    ASSERT_EQ(keymaster_count, responses.size());
+    ByteString sharing_check_value = ToByteString(responses[0].sharing_check);
+    ASSERT_TRUE(VerifyResponses(sharing_check_value, responses));
+
+    // Pick a random param, a random byte within the param's nonce, and a random bit within
+    // the byte.  Flip that bit.
+    size_t param_to_tweak = rand() % params.size();
+    uint8_t byte_to_tweak = rand() % sizeof(params[param_to_tweak].nonce);
+    uint8_t bit_to_tweak = rand() % 8;
+    params[param_to_tweak].nonce[byte_to_tweak] ^= (1 << bit_to_tweak);
+
+    responses = ComputeSharedHmac(keymasters, params);
+    EXPECT_EQ(KM_ERROR_INVALID_ARGUMENT, responses[param_to_tweak].error)
+        << "Keymaster that provided tweaked response should fail to compute HMAC key";
+    for (size_t i = 0; i < responses.size(); ++i) {
+        if (i != param_to_tweak) {
+            EXPECT_EQ(KM_ERROR_OK, responses[i].error) << "Others should succeed";
+            EXPECT_NE(sharing_check_value, ToByteString(responses[i].sharing_check))
+                << "Others should calculate a different HMAC key, due to the tweaked nonce.";
+        }
+    }
+}
+
+TEST_F(HmacKeySharingTest, ComputeSharedHmacCorruptSeed) {
+    constexpr size_t keymaster_count = 4;
+    auto keymasters = CreateKeymasters(keymaster_count);
+
+    auto params = GetHmacSharingParameters(keymasters);
+    ASSERT_EQ(keymaster_count, params.size())
+        << "One or more keymasters failed to provide parameters.";
+
+    // All should be well in the normal case
+    auto responses = ComputeSharedHmac(keymasters, params);
+    ASSERT_EQ(keymaster_count, responses.size());
+    ByteString sharing_check_value = ToByteString(responses[0].sharing_check);
+    ASSERT_TRUE(VerifyResponses(sharing_check_value, responses));
+
+    // Pick a random param and modify the seed.
+    auto param_to_tweak = rand() & params.size();
+    constexpr uint8_t wrong_seed_value[] = {0xF, 0x0, 0x0};
+    params[param_to_tweak].SetSeed({wrong_seed_value, sizeof(wrong_seed_value)});
+    auto prevent_deletion_of_wrong_seed =
+        finally([&]() { params[param_to_tweak].seed.data = nullptr; });
+
+    responses = ComputeSharedHmac(keymasters, params);
+    EXPECT_EQ(KM_ERROR_INVALID_ARGUMENT, responses[param_to_tweak].error)
+        << "Keymaster that provided tweaked response should fail to compute HMAC key";
+    for (size_t i = 0; i < responses.size(); ++i) {
+        if (i != param_to_tweak) {
+            EXPECT_EQ(KM_ERROR_OK, responses[i].error) << "Others should succeed";
+            EXPECT_NE(sharing_check_value, ToByteString(responses[i].sharing_check))
+                << "Others should calculate a different HMAC key, due to the tweaked seed.";
+        }
+    }
 }
 
 }  // namespace test

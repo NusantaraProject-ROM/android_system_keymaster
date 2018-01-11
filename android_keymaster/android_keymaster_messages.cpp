@@ -50,6 +50,24 @@ static bool deserialize_key_blob(keymaster_key_blob_t* key_blob, const uint8_t**
     return true;
 }
 
+static size_t blob_size(const keymaster_blob_t& blob) {
+    return sizeof(uint32_t) /* data size */ + blob.data_length;
+}
+
+static uint8_t* serialize_blob(const keymaster_blob_t& blob, uint8_t* buf, const uint8_t* end) {
+    return append_size_and_data_to_buf(buf, end, blob.data, blob.data_length);
+}
+
+static bool deserialize_blob(keymaster_blob_t* blob, const uint8_t** buf_ptr, const uint8_t* end) {
+    delete[] blob->data;
+    *blob = {};
+    UniquePtr<uint8_t[]> deserialized_blob;
+    if (!copy_size_and_data_from_buf(buf_ptr, end, &blob->data_length, &deserialized_blob))
+        return false;
+    blob->data = deserialized_blob.release();
+    return true;
+}
+
 size_t KeymasterResponse::SerializedSize() const {
     if (error != KM_ERROR_OK)
         return sizeof(int32_t);
@@ -559,6 +577,58 @@ uint8_t* UpgradeKeyResponse::NonErrorSerialize(uint8_t* buf, const uint8_t* end)
 
 bool UpgradeKeyResponse::NonErrorDeserialize(const uint8_t** buf_ptr, const uint8_t* end) {
     return deserialize_key_blob(&upgraded_key, buf_ptr, end);
+}
+
+size_t HmacSharingParameters::SerializedSize() const {
+    return blob_size(seed) + sizeof(nonce);
+}
+
+uint8_t* HmacSharingParameters::Serialize(uint8_t* buf, const uint8_t* end) const {
+    buf = serialize_blob(seed, buf, end);
+    return append_to_buf(buf, end, nonce, sizeof(nonce));
+}
+
+bool HmacSharingParameters::Deserialize(const uint8_t** buf_ptr, const uint8_t* end) {
+    return deserialize_blob(&seed, buf_ptr, end) &&
+           copy_from_buf(buf_ptr, end, nonce, sizeof(nonce));
+}
+
+size_t HmacSharingParametersArray::SerializedSize() const {
+    size_t size = sizeof(uint32_t);  // num_params size
+    for (size_t i = 0; i < num_params; ++i) {
+        size += params_array[i].SerializedSize();
+    }
+    return size;
+}
+
+uint8_t* HmacSharingParametersArray::Serialize(uint8_t* buf, const uint8_t* end) const {
+    buf = append_uint32_to_buf(buf, end, num_params);
+    for (size_t i = 0; i < num_params; ++i) {
+        buf = params_array[i].Serialize(buf, end);
+    }
+    return buf;
+}
+
+bool HmacSharingParametersArray::Deserialize(const uint8_t** buf_ptr, const uint8_t* end) {
+    if (!copy_uint32_from_buf(buf_ptr, end, &num_params)) return false;
+    params_array = new (std::nothrow) HmacSharingParameters[num_params];
+    if (!params_array) return false;
+    for (size_t i = 0; i < num_params; ++i) {
+        if (!params_array[i].Deserialize(buf_ptr, end)) return false;
+    }
+    return true;
+}
+
+size_t ComputeSharedHmacResponse::NonErrorSerializedSize() const {
+    return blob_size(sharing_check);
+}
+
+uint8_t* ComputeSharedHmacResponse::NonErrorSerialize(uint8_t* buf, const uint8_t* end) const {
+    return serialize_blob(sharing_check, buf, end);
+}
+
+bool ComputeSharedHmacResponse::NonErrorDeserialize(const uint8_t** buf_ptr, const uint8_t* end) {
+    return deserialize_blob(&sharing_check, buf_ptr, end);
 }
 
 }  // namespace keymaster

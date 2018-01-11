@@ -35,6 +35,8 @@ class KeymasterEnforcementContext {
 
 class AccessTimeMap;
 class AccessCountMap;
+struct HmacSharingParameters;
+struct HmacSharingParametersArray;
 
 class KeymasterEnforcement {
   public:
@@ -135,6 +137,17 @@ class KeymasterEnforcement {
     virtual bool ValidateTokenSignature(const hw_auth_token_t& token) const = 0;
 
     /**
+     * Get the sharing parameters used to negotiate a shared HMAC key among multiple parties.
+     */
+    virtual keymaster_error_t GetHmacSharingParameters(HmacSharingParameters* params) = 0;
+
+    /**
+     * Compute an HMAC key shared among multiple parties.
+     */
+    virtual keymaster_error_t ComputeSharedHmac(const HmacSharingParametersArray& params_array,
+                                                KeymasterBlob* sharingCheck) = 0;
+
+    /**
      * Creates a key ID for use in subsequent calls to AuthorizeOperation.  AndroidKeymaster uses
      * this method for creating key IDs. The generated id must be stable in that the same key_blob
      * bits yield the same keyid.
@@ -142,7 +155,6 @@ class KeymasterEnforcement {
      * Returns false if an error in the crypto library prevents creation of an ID.
      */
     virtual bool CreateKeyId(const keymaster_key_blob_t& key_blob, km_id_t* keyid) const = 0;
-
 
   private:
     keymaster_error_t AuthorizeUpdateOrFinish(const AuthorizationSet& auth_set,
