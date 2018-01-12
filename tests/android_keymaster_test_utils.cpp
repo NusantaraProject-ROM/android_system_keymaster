@@ -598,6 +598,14 @@ string Keymaster2Test::DecryptMessage(const AuthorizationSet& update_params,
     return ProcessMessage(KM_PURPOSE_DECRYPT, ciphertext, begin_params, update_params);
 }
 
+string Keymaster2Test::DecryptMessageWithParams(const string& message,
+                                                const AuthorizationSet& begin_params,
+                                                const AuthorizationSet& update_params,
+                                                AuthorizationSet* output_params) {
+    SCOPED_TRACE("DecryptMessageWithParams");
+    return ProcessMessage(KM_PURPOSE_DECRYPT, message, begin_params, update_params, output_params);
+}
+
 keymaster_error_t Keymaster2Test::GetCharacteristics() {
     FreeCharacteristics();
     return device()->get_key_characteristics(device(), &blob_, &client_id_, NULL /* app_data */,

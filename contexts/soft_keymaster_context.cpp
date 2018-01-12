@@ -464,5 +464,11 @@ keymaster_error_t SoftKeymasterContext::GenerateAttestation(const Key& key,
             *attestation_chain, *attestation_key, *this, cert_chain);
 }
 
+keymaster_error_t SoftKeymasterContext::UnwrapKey(const KeymasterKeyBlob&, const KeymasterKeyBlob&,
+                                                  const AuthorizationSet&, const KeymasterKeyBlob&,
+                                                  AuthorizationSet*, keymaster_key_format_t*,
+                                                  KeymasterKeyBlob*) const {
+    return KM_ERROR_UNIMPLEMENTED;
+}
 
 }  // namespace keymaster

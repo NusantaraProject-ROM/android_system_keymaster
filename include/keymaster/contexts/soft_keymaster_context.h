@@ -84,6 +84,11 @@ class SoftKeymasterContext: public KeymasterContext, SoftwareKeyBlobMaker, Softw
                                           const AuthorizationSet& attest_params,
                                           CertChainPtr* cert_chain) const override;
 
+    keymaster_error_t
+    UnwrapKey(const KeymasterKeyBlob& wrapped_key_blob, const KeymasterKeyBlob& wrapping_key_blob,
+              const AuthorizationSet& wrapping_key_params, const KeymasterKeyBlob& masking_key,
+              AuthorizationSet* wrapped_key_params, keymaster_key_format_t* wrapped_key_format,
+              KeymasterKeyBlob* wrapped_key_material) const override;
 
     KeymasterEnforcement* enforcement_policy() override {
         // SoftKeymaster does no enforcement; it's all done by Keystore.

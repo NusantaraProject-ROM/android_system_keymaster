@@ -531,6 +531,10 @@ class AuthorizationSetBuilder {
         return Authorization(TAG_DIGEST, digest);
     }
 
+    AuthorizationSetBuilder& BlockMode(keymaster_block_mode_t mode) {
+        return Authorization(TAG_BLOCK_MODE, mode);
+    }
+
     AuthorizationSetBuilder& Padding(keymaster_padding_t padding) {
         return Authorization(TAG_PADDING, padding);
     }

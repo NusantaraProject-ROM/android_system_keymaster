@@ -41,6 +41,7 @@ bool RsaKey::SupportedMode(keymaster_purpose_t purpose, keymaster_padding_t padd
 
     case KM_PURPOSE_ENCRYPT:
     case KM_PURPOSE_DECRYPT:
+    case KM_PURPOSE_WRAP:
         return padding == KM_PAD_RSA_OAEP || padding == KM_PAD_RSA_PKCS1_1_5_ENCRYPT;
 
     case KM_PURPOSE_DERIVE_KEY:
@@ -57,6 +58,7 @@ bool RsaKey::SupportedMode(keymaster_purpose_t purpose, keymaster_digest_t diges
 
     case KM_PURPOSE_ENCRYPT:
     case KM_PURPOSE_DECRYPT:
+    case KM_PURPOSE_WRAP:
         /* Don't care */
         break;
 

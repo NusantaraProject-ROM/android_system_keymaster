@@ -72,6 +72,7 @@ bool OperationFactory::is_public_key_operation() const {
     switch (key_type.purpose) {
     case KM_PURPOSE_VERIFY:
     case KM_PURPOSE_ENCRYPT:
+    case KM_PURPOSE_WRAP:
         return true;
     case KM_PURPOSE_SIGN:
     case KM_PURPOSE_DECRYPT:

@@ -100,6 +100,7 @@ cc_library_shared {
         "km_openssl/rsa_operation.cpp",
         "km_openssl/software_random_source.cpp",
         "km_openssl/symmetric_key.cpp",
+        "km_openssl/wrapped_key.cpp",
     ],
 
     shared_libs: [
@@ -156,6 +157,7 @@ cc_library {
         "legacy_support/keymaster1_legacy_support.cpp",
         "contexts/soft_attestation_cert.cpp",
         "contexts/soft_keymaster_context.cpp",
+        "contexts/pure_soft_keymaster_context.cpp",
         "contexts/soft_keymaster_device.cpp",
         "km_openssl/soft_keymaster_enforcement.cpp",
         "contexts/soft_keymaster_logger.cpp",

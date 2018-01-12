@@ -251,4 +251,10 @@ keymaster_error_t Keymaster1PassthroughContext::GenerateAttestation(const Key& k
             *attestation_chain, *attestation_key, *this, cert_chain);
 }
 
+keymaster_error_t Keymaster1PassthroughContext::UnwrapKey(
+    const KeymasterKeyBlob&, const KeymasterKeyBlob&, const AuthorizationSet&,
+    const KeymasterKeyBlob&, AuthorizationSet*, keymaster_key_format_t*, KeymasterKeyBlob*) const {
+    return KM_ERROR_UNIMPLEMENTED;
+}
+
 } // namespace keymaster

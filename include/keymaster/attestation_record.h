@@ -21,7 +21,151 @@
 
 #include <keymaster/authorization_set.h>
 
+#include <openssl/asn1t.h>
+
 namespace keymaster {
+
+struct stack_st_ASN1_TYPE_Delete {
+    void operator()(stack_st_ASN1_TYPE* p) { sk_ASN1_TYPE_free(p); }
+};
+
+struct ASN1_STRING_Delete {
+    void operator()(ASN1_STRING* p) { ASN1_STRING_free(p); }
+};
+
+struct ASN1_TYPE_Delete {
+    void operator()(ASN1_TYPE* p) { ASN1_TYPE_free(p); }
+};
+
+#define ASN1_INTEGER_SET STACK_OF(ASN1_INTEGER)
+
+typedef struct km_root_of_trust {
+    ASN1_OCTET_STRING* verified_boot_key;
+    ASN1_BOOLEAN* device_locked;
+    ASN1_ENUMERATED* verified_boot_state;
+} KM_ROOT_OF_TRUST;
+
+ASN1_SEQUENCE(KM_ROOT_OF_TRUST) = {
+    ASN1_SIMPLE(KM_ROOT_OF_TRUST, verified_boot_key, ASN1_OCTET_STRING),
+    ASN1_SIMPLE(KM_ROOT_OF_TRUST, device_locked, ASN1_BOOLEAN),
+    ASN1_SIMPLE(KM_ROOT_OF_TRUST, verified_boot_state, ASN1_ENUMERATED),
+} ASN1_SEQUENCE_END(KM_ROOT_OF_TRUST);
+DECLARE_ASN1_FUNCTIONS(KM_ROOT_OF_TRUST);
+
+typedef struct km_auth_list {
+    ASN1_INTEGER_SET* purpose;
+    ASN1_INTEGER* algorithm;
+    ASN1_INTEGER* key_size;
+    ASN1_INTEGER_SET* block_mode;
+    ASN1_INTEGER_SET* digest;
+    ASN1_INTEGER_SET* padding;
+    ASN1_NULL* caller_nonce;
+    ASN1_INTEGER* min_mac_length;
+    ASN1_INTEGER_SET* kdf;
+    ASN1_INTEGER* ec_curve;
+    ASN1_INTEGER* rsa_public_exponent;
+    ASN1_INTEGER* active_date_time;
+    ASN1_INTEGER* origination_expire_date_time;
+    ASN1_INTEGER* usage_expire_date_time;
+    ASN1_NULL* no_auth_required;
+    ASN1_INTEGER* user_auth_type;
+    ASN1_INTEGER* auth_timeout;
+    ASN1_NULL* allow_while_on_body;
+    ASN1_NULL* all_applications;
+    ASN1_OCTET_STRING* application_id;
+    ASN1_INTEGER* creation_date_time;
+    ASN1_INTEGER* origin;
+    ASN1_NULL* rollback_resistant;
+    KM_ROOT_OF_TRUST* root_of_trust;
+    ASN1_INTEGER* os_version;
+    ASN1_INTEGER* os_patchlevel;
+    ASN1_OCTET_STRING* attestation_application_id;
+    ASN1_OCTET_STRING* attestation_id_brand;
+    ASN1_OCTET_STRING* attestation_id_device;
+    ASN1_OCTET_STRING* attestation_id_product;
+    ASN1_OCTET_STRING* attestation_id_serial;
+    ASN1_OCTET_STRING* attestation_id_imei;
+    ASN1_OCTET_STRING* attestation_id_meid;
+    ASN1_OCTET_STRING* attestation_id_manufacturer;
+    ASN1_OCTET_STRING* attestation_id_model;
+} KM_AUTH_LIST;
+
+ASN1_SEQUENCE(KM_AUTH_LIST) = {
+    ASN1_EXP_SET_OF_OPT(KM_AUTH_LIST, purpose, ASN1_INTEGER, TAG_PURPOSE.masked_tag()),
+    ASN1_EXP_OPT(KM_AUTH_LIST, algorithm, ASN1_INTEGER, TAG_ALGORITHM.masked_tag()),
+    ASN1_EXP_OPT(KM_AUTH_LIST, key_size, ASN1_INTEGER, TAG_KEY_SIZE.masked_tag()),
+    ASN1_EXP_SET_OF_OPT(KM_AUTH_LIST, block_mode, ASN1_INTEGER, TAG_BLOCK_MODE.masked_tag()),
+    ASN1_EXP_SET_OF_OPT(KM_AUTH_LIST, digest, ASN1_INTEGER, TAG_DIGEST.masked_tag()),
+    ASN1_EXP_SET_OF_OPT(KM_AUTH_LIST, padding, ASN1_INTEGER, TAG_PADDING.masked_tag()),
+    ASN1_EXP_OPT(KM_AUTH_LIST, caller_nonce, ASN1_NULL, TAG_CALLER_NONCE.masked_tag()),
+    ASN1_EXP_SET_OF_OPT(KM_AUTH_LIST, min_mac_length, ASN1_INTEGER,
+                        TAG_MIN_MAC_LENGTH.masked_tag()),
+    ASN1_EXP_SET_OF_OPT(KM_AUTH_LIST, kdf, ASN1_INTEGER, TAG_KDF.masked_tag()),
+    ASN1_EXP_OPT(KM_AUTH_LIST, ec_curve, ASN1_INTEGER, TAG_EC_CURVE.masked_tag()),
+    ASN1_EXP_OPT(KM_AUTH_LIST, rsa_public_exponent, ASN1_INTEGER,
+                 TAG_RSA_PUBLIC_EXPONENT.masked_tag()),
+    ASN1_EXP_OPT(KM_AUTH_LIST, active_date_time, ASN1_INTEGER, TAG_ACTIVE_DATETIME.masked_tag()),
+    ASN1_EXP_OPT(KM_AUTH_LIST, origination_expire_date_time, ASN1_INTEGER,
+                 TAG_ORIGINATION_EXPIRE_DATETIME.masked_tag()),
+    ASN1_EXP_OPT(KM_AUTH_LIST, usage_expire_date_time, ASN1_INTEGER,
+                 TAG_USAGE_EXPIRE_DATETIME.masked_tag()),
+    ASN1_EXP_OPT(KM_AUTH_LIST, no_auth_required, ASN1_NULL, TAG_NO_AUTH_REQUIRED.masked_tag()),
+    ASN1_EXP_OPT(KM_AUTH_LIST, user_auth_type, ASN1_INTEGER, TAG_USER_AUTH_TYPE.masked_tag()),
+    ASN1_EXP_OPT(KM_AUTH_LIST, auth_timeout, ASN1_INTEGER, TAG_AUTH_TIMEOUT.masked_tag()),
+    ASN1_EXP_OPT(KM_AUTH_LIST, allow_while_on_body, ASN1_NULL,
+                 TAG_ALLOW_WHILE_ON_BODY.masked_tag()),
+    ASN1_EXP_OPT(KM_AUTH_LIST, all_applications, ASN1_NULL, TAG_ALL_APPLICATIONS.masked_tag()),
+    ASN1_EXP_OPT(KM_AUTH_LIST, application_id, ASN1_OCTET_STRING, TAG_APPLICATION_ID.masked_tag()),
+    ASN1_EXP_OPT(KM_AUTH_LIST, creation_date_time, ASN1_INTEGER,
+                 TAG_CREATION_DATETIME.masked_tag()),
+    ASN1_EXP_OPT(KM_AUTH_LIST, origin, ASN1_INTEGER, TAG_ORIGIN.masked_tag()),
+    ASN1_EXP_OPT(KM_AUTH_LIST, rollback_resistant, ASN1_NULL, TAG_ROLLBACK_RESISTANT.masked_tag()),
+    ASN1_EXP_OPT(KM_AUTH_LIST, root_of_trust, KM_ROOT_OF_TRUST, TAG_ROOT_OF_TRUST.masked_tag()),
+    ASN1_EXP_OPT(KM_AUTH_LIST, os_version, ASN1_INTEGER, TAG_OS_VERSION.masked_tag()),
+    ASN1_EXP_OPT(KM_AUTH_LIST, os_patchlevel, ASN1_INTEGER, TAG_OS_PATCHLEVEL.masked_tag()),
+    ASN1_EXP_OPT(KM_AUTH_LIST, attestation_application_id, ASN1_OCTET_STRING,
+                 TAG_ATTESTATION_APPLICATION_ID.masked_tag()),
+    ASN1_EXP_OPT(KM_AUTH_LIST, attestation_id_brand, ASN1_OCTET_STRING,
+                 TAG_ATTESTATION_ID_BRAND.masked_tag()),
+    ASN1_EXP_OPT(KM_AUTH_LIST, attestation_id_device, ASN1_OCTET_STRING,
+                 TAG_ATTESTATION_ID_DEVICE.masked_tag()),
+    ASN1_EXP_OPT(KM_AUTH_LIST, attestation_id_product, ASN1_OCTET_STRING,
+                 TAG_ATTESTATION_ID_PRODUCT.masked_tag()),
+    ASN1_EXP_OPT(KM_AUTH_LIST, attestation_id_serial, ASN1_OCTET_STRING,
+                 TAG_ATTESTATION_ID_SERIAL.masked_tag()),
+    ASN1_EXP_OPT(KM_AUTH_LIST, attestation_id_imei, ASN1_OCTET_STRING,
+                 TAG_ATTESTATION_ID_IMEI.masked_tag()),
+    ASN1_EXP_OPT(KM_AUTH_LIST, attestation_id_meid, ASN1_OCTET_STRING,
+                 TAG_ATTESTATION_ID_MEID.masked_tag()),
+    ASN1_EXP_OPT(KM_AUTH_LIST, attestation_id_manufacturer, ASN1_OCTET_STRING,
+                 TAG_ATTESTATION_ID_MANUFACTURER.masked_tag()),
+    ASN1_EXP_OPT(KM_AUTH_LIST, attestation_id_model, ASN1_OCTET_STRING,
+                 TAG_ATTESTATION_ID_MODEL.masked_tag()),
+} ASN1_SEQUENCE_END(KM_AUTH_LIST);
+DECLARE_ASN1_FUNCTIONS(KM_AUTH_LIST);
+
+typedef struct km_key_description {
+    ASN1_INTEGER* attestation_version;
+    ASN1_ENUMERATED* attestation_security_level;
+    ASN1_INTEGER* keymaster_version;
+    ASN1_ENUMERATED* keymaster_security_level;
+    ASN1_OCTET_STRING* attestation_challenge;
+    KM_AUTH_LIST* software_enforced;
+    KM_AUTH_LIST* tee_enforced;
+    ASN1_INTEGER* unique_id;
+} KM_KEY_DESCRIPTION;
+
+ASN1_SEQUENCE(KM_KEY_DESCRIPTION) = {
+    ASN1_SIMPLE(KM_KEY_DESCRIPTION, attestation_version, ASN1_INTEGER),
+    ASN1_SIMPLE(KM_KEY_DESCRIPTION, attestation_security_level, ASN1_ENUMERATED),
+    ASN1_SIMPLE(KM_KEY_DESCRIPTION, keymaster_version, ASN1_INTEGER),
+    ASN1_SIMPLE(KM_KEY_DESCRIPTION, keymaster_security_level, ASN1_ENUMERATED),
+    ASN1_SIMPLE(KM_KEY_DESCRIPTION, attestation_challenge, ASN1_OCTET_STRING),
+    ASN1_SIMPLE(KM_KEY_DESCRIPTION, unique_id, ASN1_OCTET_STRING),
+    ASN1_SIMPLE(KM_KEY_DESCRIPTION, software_enforced, KM_AUTH_LIST),
+    ASN1_SIMPLE(KM_KEY_DESCRIPTION, tee_enforced, KM_AUTH_LIST),
+} ASN1_SEQUENCE_END(KM_KEY_DESCRIPTION);
+DECLARE_ASN1_FUNCTIONS(KM_KEY_DESCRIPTION);
 
 class AttestationRecordContext {
 protected:
@@ -106,6 +250,10 @@ keymaster_error_t parse_attestation_record(const uint8_t* asn1_key_desc, size_t 
                                            AuthorizationSet* software_enforced,
                                            AuthorizationSet* tee_enforced,
                                            keymaster_blob_t* unique_id);
+
+keymaster_error_t build_auth_list(const AuthorizationSet& auth_list, KM_AUTH_LIST* record);
+
+keymaster_error_t extract_auth_list(const KM_AUTH_LIST* record, AuthorizationSet* auth_list);
 }  // namespace keymaster
 
 #endif  // SYSTEM_KEYMASTER_ATTESTATION_RECORD_H_

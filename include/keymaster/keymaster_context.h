@@ -138,6 +138,12 @@ class KeymasterContext {
                                                   const AuthorizationSet& attest_params,
                                                   CertChainPtr* cert_chain) const = 0;
 
+    virtual keymaster_error_t
+    UnwrapKey(const KeymasterKeyBlob& wrapped_key_blob, const KeymasterKeyBlob& wrapping_key_blob,
+              const AuthorizationSet& wrapping_key_params, const KeymasterKeyBlob& masking_key,
+              AuthorizationSet* wrapped_key_params, keymaster_key_format_t* wrapped_key_format,
+              KeymasterKeyBlob* wrapped_key_material) const = 0;
+
   private:
     // Uncopyable.
     KeymasterContext(const KeymasterContext&);
