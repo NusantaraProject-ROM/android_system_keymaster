@@ -20,9 +20,9 @@
 #include <keymaster/UniquePtr.h>
 
 #include <hardware/keymaster_defs.h>
+#include <keymaster/android_keymaster_utils.h>
 #include <keymaster/keymaster_tags.h>
 #include <keymaster/serializable.h>
-#include <keymaster/android_keymaster_utils.h>
 
 namespace keymaster {
 
@@ -671,29 +671,35 @@ private:
 };
 
 class AuthProxy {
-public:
+  public:
     AuthProxy(const AuthorizationSet& hw_enforced, const AuthorizationSet& sw_enforced)
-        : hw_enforced_(hw_enforced),
-          sw_enforced_(sw_enforced) {
-    }
+        : hw_enforced_(hw_enforced), sw_enforced_(sw_enforced) {}
 
-    template<typename... ARGS>
-    bool Contains(ARGS&&... args) const {
+    template <typename... ARGS> bool Contains(ARGS&&... args) const {
         return hw_enforced_.Contains(forward<ARGS>(args)...) ||
                sw_enforced_.Contains(forward<ARGS>(args)...);
     }
-    template<typename... ARGS>
-    bool GetTagValue(ARGS&&... args) const {
+
+    template <typename... ARGS> bool GetTagValue(ARGS&&... args) const {
         return hw_enforced_.GetTagValue(forward<ARGS>(args)...) ||
                sw_enforced_.GetTagValue(forward<ARGS>(args)...);
     }
+
     AuthProxyIterator begin() const {
         return AuthProxyIterator(hw_enforced_, sw_enforced_);
     }
-    AuthProxyIterator end() const {
-        return AuthProxyIterator();
+
+    AuthProxyIterator end() const { return AuthProxyIterator(); }
+
+    size_t size() const { return hw_enforced_.size() + sw_enforced_.size(); }
+
+    keymaster_key_param_t operator[](size_t pos) const {
+        if (pos < hw_enforced_.size()) return hw_enforced_[pos];
+        if (pos < sw_enforced_.size()) return sw_enforced_[pos - hw_enforced_.size()];
+        return {};
     }
-private:
+
+  private:
     const AuthorizationSet& hw_enforced_;
     const AuthorizationSet& sw_enforced_;
 };

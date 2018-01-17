@@ -34,8 +34,7 @@ typedef int openssl_size_t;
 
 namespace keymaster {
 
-OperationPtr HmacOperationFactory::CreateOperation(const Key& key,
-                                                   const AuthorizationSet& begin_params,
+OperationPtr HmacOperationFactory::CreateOperation(Key&& key, const AuthorizationSet& begin_params,
                                                    keymaster_error_t* error) {
     uint32_t min_mac_length_bits;
     if (!key.authorizations().GetTagValue(TAG_MIN_MAC_LENGTH, &min_mac_length_bits)) {
@@ -66,18 +65,14 @@ OperationPtr HmacOperationFactory::CreateOperation(const Key& key,
         return nullptr;
     }
 
-    const SymmetricKey* symmetric_key = static_cast<const SymmetricKey*>(&key);
     UniquePtr<HmacOperation> op(new (std::nothrow) HmacOperation(
-        purpose(), symmetric_key->key_material().key_material,
-        symmetric_key->key_material().key_material_size, digest,
-        mac_length_bits / 8, min_mac_length_bits / 8));
+        move(key), purpose(), digest, mac_length_bits / 8, min_mac_length_bits / 8));
     if (!op.get())
         *error = KM_ERROR_MEMORY_ALLOCATION_FAILED;
     else
         *error = op->error();
 
-    if (*error != KM_ERROR_OK)
-        return nullptr;
+    if (*error != KM_ERROR_OK) return nullptr;
 
     return op;
 }
@@ -90,11 +85,10 @@ const keymaster_digest_t* HmacOperationFactory::SupportedDigests(size_t* digest_
     return supported_digests;
 }
 
-HmacOperation::HmacOperation(keymaster_purpose_t purpose, const uint8_t* key_data,
-                             size_t key_data_size, keymaster_digest_t digest, size_t mac_length,
-                             size_t min_mac_length)
-    : Operation(purpose), error_(KM_ERROR_OK), mac_length_(mac_length),
-      min_mac_length_(min_mac_length) {
+HmacOperation::HmacOperation(Key&& key, keymaster_purpose_t purpose, keymaster_digest_t digest,
+                             size_t mac_length, size_t min_mac_length)
+    : Operation(purpose, key.hw_enforced_move(), key.sw_enforced_move()), error_(KM_ERROR_OK),
+      mac_length_(mac_length), min_mac_length_(min_mac_length) {
     // Initialize CTX first, so dtor won't crash even if we error out later.
     HMAC_CTX_init(&ctx_);
 
@@ -137,7 +131,8 @@ HmacOperation::HmacOperation(keymaster_purpose_t purpose, const uint8_t* key_dat
         }
     }
 
-    HMAC_Init_ex(&ctx_, key_data, key_data_size, md, NULL /* engine */);
+    KeymasterKeyBlob blob = key.key_material_move();
+    HMAC_Init_ex(&ctx_, blob.key_material, blob.key_material_size, md, NULL /* engine */);
 }
 
 HmacOperation::~HmacOperation() {
@@ -170,18 +165,15 @@ keymaster_error_t HmacOperation::Finish(const AuthorizationSet& additional_param
                                         const Buffer& input, const Buffer& signature,
                                         AuthorizationSet* /* output_params */, Buffer* output) {
     keymaster_error_t error = UpdateForFinish(additional_params, input);
-    if (error != KM_ERROR_OK)
-        return error;
+    if (error != KM_ERROR_OK) return error;
 
     uint8_t digest[EVP_MAX_MD_SIZE];
     unsigned int digest_len;
-    if (!HMAC_Final(&ctx_, digest, &digest_len))
-        return TranslateLastOpenSslError();
+    if (!HMAC_Final(&ctx_, digest, &digest_len)) return TranslateLastOpenSslError();
 
     switch (purpose()) {
     case KM_PURPOSE_SIGN:
-        if (mac_length_ > digest_len)
-            return KM_ERROR_UNSUPPORTED_MAC_LENGTH;
+        if (mac_length_ > digest_len) return KM_ERROR_UNSUPPORTED_MAC_LENGTH;
         if (!output->reserve(mac_length_) || !output->write(digest, mac_length_))
             return KM_ERROR_MEMORY_ALLOCATION_FAILED;
         return KM_ERROR_OK;
@@ -189,8 +181,7 @@ keymaster_error_t HmacOperation::Finish(const AuthorizationSet& additional_param
         size_t siglen = signature.available_read();
         if (siglen > digest_len || siglen < kMinHmacLengthBits / 8)
             return KM_ERROR_UNSUPPORTED_MAC_LENGTH;
-        if (siglen < min_mac_length_)
-            return KM_ERROR_INVALID_MAC_LENGTH;
+        if (siglen < min_mac_length_) return KM_ERROR_INVALID_MAC_LENGTH;
         if (CRYPTO_memcmp(signature.peek_read(), digest, siglen) != 0)
             return KM_ERROR_VERIFICATION_FAILED;
         return KM_ERROR_OK;

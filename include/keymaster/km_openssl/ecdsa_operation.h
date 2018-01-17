@@ -22,14 +22,17 @@
 
 #include <keymaster/UniquePtr.h>
 
+#include <keymaster/key.h>
 #include <keymaster/operation.h>
 
 namespace keymaster {
 
 class EcdsaOperation : public Operation {
   public:
-    EcdsaOperation(keymaster_purpose_t purpose, keymaster_digest_t digest, EVP_PKEY* key)
-        : Operation(purpose), digest_(digest), digest_algorithm_(nullptr), ecdsa_key_(key) {
+    EcdsaOperation(AuthorizationSet&& hw_enforced, AuthorizationSet&& sw_enforced,
+                   keymaster_purpose_t purpose, keymaster_digest_t digest, EVP_PKEY* key)
+        : Operation(purpose, move(hw_enforced), move(sw_enforced)), digest_(digest),
+          digest_algorithm_(nullptr), ecdsa_key_(key) {
         EVP_MD_CTX_init(&digest_ctx_);
     }
     ~EcdsaOperation();
@@ -49,8 +52,9 @@ class EcdsaOperation : public Operation {
 
 class EcdsaSignOperation : public EcdsaOperation {
   public:
-    EcdsaSignOperation(keymaster_digest_t digest, EVP_PKEY* key)
-        : EcdsaOperation(KM_PURPOSE_SIGN, digest, key) {}
+    EcdsaSignOperation(AuthorizationSet&& hw_enforced, AuthorizationSet&& sw_enforced,
+                       keymaster_digest_t digest, EVP_PKEY* key)
+        : EcdsaOperation(move(hw_enforced), move(sw_enforced), KM_PURPOSE_SIGN, digest, key) {}
     keymaster_error_t Begin(const AuthorizationSet& input_params,
                             AuthorizationSet* output_params) override;
     keymaster_error_t Update(const AuthorizationSet& additional_params, const Buffer& input,
@@ -63,8 +67,9 @@ class EcdsaSignOperation : public EcdsaOperation {
 
 class EcdsaVerifyOperation : public EcdsaOperation {
   public:
-    EcdsaVerifyOperation(keymaster_digest_t digest, EVP_PKEY* key)
-        : EcdsaOperation(KM_PURPOSE_VERIFY, digest, key) {}
+    EcdsaVerifyOperation(AuthorizationSet&& hw_enforced, AuthorizationSet&& sw_enforced,
+                         keymaster_digest_t digest, EVP_PKEY* key)
+        : EcdsaOperation(move(hw_enforced), move(sw_enforced), KM_PURPOSE_VERIFY, digest, key) {}
     keymaster_error_t Begin(const AuthorizationSet& input_params,
                             AuthorizationSet* output_params) override;
     keymaster_error_t Update(const AuthorizationSet& additional_params, const Buffer& input,
@@ -78,27 +83,33 @@ class EcdsaVerifyOperation : public EcdsaOperation {
 class EcdsaOperationFactory : public OperationFactory {
   private:
     KeyType registry_key() const override { return KeyType(KM_ALGORITHM_EC, purpose()); }
-    OperationPtr CreateOperation(const Key& key, const AuthorizationSet& begin_params,
+    OperationPtr CreateOperation(Key&& key, const AuthorizationSet& begin_params,
                                  keymaster_error_t* error) override;
     const keymaster_digest_t* SupportedDigests(size_t* digest_count) const override;
 
     virtual keymaster_purpose_t purpose() const = 0;
-    virtual Operation* InstantiateOperation(keymaster_digest_t digest, EVP_PKEY* key) = 0;
+    virtual Operation* InstantiateOperation(AuthorizationSet&& hw_enforced,
+                                            AuthorizationSet&& sw_enforced,
+                                            keymaster_digest_t digest, EVP_PKEY* key) = 0;
 };
 
 class EcdsaSignOperationFactory : public EcdsaOperationFactory {
   private:
     keymaster_purpose_t purpose() const override { return KM_PURPOSE_SIGN; }
-    Operation* InstantiateOperation(keymaster_digest_t digest, EVP_PKEY* key) override {
-        return new (std::nothrow) EcdsaSignOperation(digest, key);
+    Operation* InstantiateOperation(AuthorizationSet&& hw_enforced, AuthorizationSet&& sw_enforced,
+                                    keymaster_digest_t digest, EVP_PKEY* key) override {
+        return new (std::nothrow)
+            EcdsaSignOperation(move(hw_enforced), move(sw_enforced), digest, key);
     }
 };
 
 class EcdsaVerifyOperationFactory : public EcdsaOperationFactory {
   public:
     keymaster_purpose_t purpose() const override { return KM_PURPOSE_VERIFY; }
-    Operation* InstantiateOperation(keymaster_digest_t digest, EVP_PKEY* key) override {
-        return new (std::nothrow) EcdsaVerifyOperation(digest, key);
+    Operation* InstantiateOperation(AuthorizationSet&& hw_enforced, AuthorizationSet&& sw_enforced,
+                                    keymaster_digest_t digest, EVP_PKEY* key) override {
+        return new (std::nothrow)
+            EcdsaVerifyOperation(move(hw_enforced), move(sw_enforced), digest, key);
     }
 };
 

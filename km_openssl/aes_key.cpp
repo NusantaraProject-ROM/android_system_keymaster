@@ -27,8 +27,8 @@
 
 namespace keymaster {
 
-AesEncryptionOperationFactory encrypt_factory;
-AesDecryptionOperationFactory decrypt_factory;
+static AesOperationFactory encrypt_factory(KM_PURPOSE_ENCRYPT);
+static AesOperationFactory decrypt_factory(KM_PURPOSE_DECRYPT);
 
 OperationFactory* AesKeyFactory::GetOperationFactory(keymaster_purpose_t purpose) const {
     switch (purpose) {

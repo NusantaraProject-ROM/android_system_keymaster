@@ -18,8 +18,8 @@
 #define SYSTEM_KEYMASTER_SYMMETRIC_KEY_H_
 
 #include <keymaster/key_factory.h>
-#include <keymaster/soft_key_factory.h>
 #include <keymaster/random_source.h>
+#include <keymaster/soft_key_factory.h>
 
 #include <keymaster/key.h>
 
@@ -43,13 +43,19 @@ class SymmetricKeyFactory : public KeyFactory, public SoftKeyFactoryMixin {
                                 KeymasterKeyBlob* output_key_blob, AuthorizationSet* hw_enforced,
                                 AuthorizationSet* sw_enforced) const override;
 
-    virtual const keymaster_key_format_t* SupportedImportFormats(size_t* format_count) const override;
-    virtual const keymaster_key_format_t* SupportedExportFormats(size_t* format_count) const override {
-        return NoFormats(format_count);
+    virtual const keymaster_key_format_t* SupportedImportFormats(size_t* count) const override;
+    virtual const keymaster_key_format_t* SupportedExportFormats(size_t* count) const override {
+        return NoFormats(count);
     };
 
   private:
     virtual bool key_size_supported(size_t key_size_bits) const = 0;
+
+    // These methods translate between key size in bits and bytes.  Normally it's just 8 bits to the
+    // byte, but DES is different.
+    virtual size_t key_size_bytes(size_t key_size_bits) const { return key_size_bits / 8; }
+    virtual size_t key_size_bits(size_t key_size_bytes) const { return key_size_bytes * 8; }
+
     virtual keymaster_error_t
     validate_algorithm_specific_new_key_params(const AuthorizationSet& key_description) const = 0;
 

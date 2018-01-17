@@ -95,23 +95,20 @@ static EVP_PKEY* GetEvpKey(const EcdsaKeymaster1Key& key, keymaster_error_t* err
     return pkey.release();
 }
 
-OperationPtr EcdsaKeymaster1OperationFactory::CreateOperation(const Key& key,
+OperationPtr EcdsaKeymaster1OperationFactory::CreateOperation(Key&& key,
                                                               const AuthorizationSet& begin_params,
                                                               keymaster_error_t* error) {
     keymaster_digest_t digest;
-    if (!GetAndValidateDigest(begin_params, key, &digest, error))
-        return nullptr;
+    if (!GetAndValidateDigest(begin_params, key, &digest, error)) return nullptr;
 
-    const EcdsaKeymaster1Key& ecdsa_km1_key(static_cast<const EcdsaKeymaster1Key&>(key));
+    const EcdsaKeymaster1Key& ecdsa_km1_key = static_cast<EcdsaKeymaster1Key&>(key);
     unique_ptr<EVP_PKEY, EVP_PKEY_Delete> ecdsa(GetEvpKey(ecdsa_km1_key, error));
-    if (!ecdsa)
-        return nullptr;
+    if (!ecdsa) return nullptr;
 
     switch (purpose_) {
     case KM_PURPOSE_SIGN:
-        return OperationPtr(new EcdsaKeymaster1Operation<EcdsaSignOperation>(digest,
-                                                                             ecdsa.release(),
-                                                                             engine_));
+        return OperationPtr(new EcdsaKeymaster1Operation<EcdsaSignOperation>(
+            key.hw_enforced_move(), key.sw_enforced_move(), digest, ecdsa.release(), engine_));
     default:
         LOG_E(
             "Bug: Pubkey operation requested.  Those should be handled by normal ECDSA operations.",

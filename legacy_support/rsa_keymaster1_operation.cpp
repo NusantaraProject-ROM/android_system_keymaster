@@ -111,30 +111,28 @@ static EVP_PKEY* GetEvpKey(const RsaKeymaster1Key& key, keymaster_error_t* error
     return pkey.release();
 }
 
-OperationPtr RsaKeymaster1OperationFactory::CreateOperation(const Key& key,
+OperationPtr RsaKeymaster1OperationFactory::CreateOperation(Key&& key,
                                                             const AuthorizationSet& begin_params,
                                                             keymaster_error_t* error) {
     keymaster_digest_t digest;
-    if (!GetAndValidateDigest(begin_params, key, &digest, error))
-        return nullptr;
+    if (!GetAndValidateDigest(begin_params, key, &digest, error)) return nullptr;
 
     keymaster_padding_t padding;
-    if (!GetAndValidatePadding(begin_params, key, &padding, error))
-        return nullptr;
+    if (!GetAndValidatePadding(begin_params, key, &padding, error)) return nullptr;
 
-    const RsaKeymaster1Key& rsa_km1_key(static_cast<const RsaKeymaster1Key&>(key));
+    const RsaKeymaster1Key& rsa_km1_key = static_cast<RsaKeymaster1Key&>(key);
     unique_ptr<EVP_PKEY, EVP_PKEY_Delete> rsa(GetEvpKey(rsa_km1_key, error));
-    if (!rsa)
-        return nullptr;
+    if (!rsa) return nullptr;
 
     switch (purpose_) {
     case KM_PURPOSE_SIGN:
-        return OperationPtr(new RsaKeymaster1Operation<RsaSignOperation>(digest, padding,
-                                                                         rsa.release(), engine_));
+        return OperationPtr(new RsaKeymaster1Operation<RsaSignOperation>(
+            key.hw_enforced_move(), key.sw_enforced_move(), digest, padding, rsa.release(),
+            engine_));
     case KM_PURPOSE_DECRYPT:
-        return OperationPtr(new RsaKeymaster1Operation<RsaDecryptOperation>(digest, padding,
-                                                                            rsa.release(),
-                                                                            engine_));
+        return OperationPtr(new RsaKeymaster1Operation<RsaDecryptOperation>(
+            key.hw_enforced_move(), key.sw_enforced_move(), digest, padding, rsa.release(),
+            engine_));
     default:
         LOG_E("Bug: Pubkey operation requested.  Those should be handled by normal RSA operations.",
               0);

@@ -33,22 +33,22 @@ class Operation;
 /**
  * Template implementation for KM1 and KM2 operations
  */
-template <typename KeymasterDeviceType>
-class KeymasterPassthroughOperation : public Operation {
+template <typename KeymasterDeviceType> class KeymasterPassthroughOperation : public Operation {
   public:
     explicit KeymasterPassthroughOperation(keymaster_purpose_t purpose,
-            const KeymasterDeviceType* km_device, KeymasterKeyBlob&& keyBlob) :
-            Operation(purpose), key_blob_(std::move(keyBlob)), km_device_(km_device) {
+                                           const KeymasterDeviceType* km_device, Key&& key)
+        : Operation(purpose, key.hw_enforced_move(), key.sw_enforced_move()),
+          key_blob_(key.key_material_move()), km_device_(km_device) {
         operation_handle_ = 0;
     }
     virtual ~KeymasterPassthroughOperation() {}
 
-    keymaster_error_t Begin(const AuthorizationSet& input_params, AuthorizationSet* output_params)
-            override {
+    keymaster_error_t Begin(const AuthorizationSet& input_params,
+                            AuthorizationSet* output_params) override {
         keymaster_key_param_set_t out_params = {};
         keymaster_error_t rc;
         rc = km_device_->begin(km_device_, purpose(), &key_blob_, &input_params, &out_params,
-                &operation_handle_);
+                               &operation_handle_);
         if (rc == KM_ERROR_OK && output_params) output_params->Reinitialize(out_params);
         keymaster_free_param_set(&out_params);
         return rc;
@@ -57,10 +57,11 @@ class KeymasterPassthroughOperation : public Operation {
                              AuthorizationSet* output_params, Buffer* output,
                              size_t* input_consumed) override {
         keymaster_key_param_set_t out_params = {};
-        keymaster_blob_t in{ input.peek_read(), input.available_read() };
+        keymaster_blob_t in{input.peek_read(), input.available_read()};
         keymaster_blob_t out = {};
         keymaster_error_t rc;
-        rc = km_device_->update(km_device_, operation_handle_, &input_params, &in, input_consumed, &out_params, &out);
+        rc = km_device_->update(km_device_, operation_handle_, &input_params, &in, input_consumed,
+                                &out_params, &out);
         if (rc == KM_ERROR_OK) {
             if (output) output->Reinitialize(out.data, out.data_length);
             if (output_params) output_params->Reinitialize(out_params);
@@ -72,56 +73,40 @@ class KeymasterPassthroughOperation : public Operation {
     keymaster_error_t Finish(const AuthorizationSet& input_params, const Buffer& input,
                              const Buffer& signature, AuthorizationSet* output_params,
                              Buffer* output) override;
-    keymaster_error_t Abort() {
-        return km_device_->abort(km_device_, operation_handle_);
-    }
+    keymaster_error_t Abort() { return km_device_->abort(km_device_, operation_handle_); }
 
-private:
+  private:
     KeymasterKeyBlob key_blob_;
     const KeymasterDeviceType* km_device_;
 };
 
-template<>
-keymaster_error_t
-KeymasterPassthroughOperation<keymaster1_device_t>::Finish(const AuthorizationSet& input_params,
-                                                           const Buffer& input,
-                                                           const Buffer& signature,
-                                                           AuthorizationSet* output_params,
-                                                           Buffer* output);
-template<>
-keymaster_error_t
-KeymasterPassthroughOperation<keymaster2_device_t>::Finish(const AuthorizationSet& input_params,
-                                                           const Buffer& input,
-                                                           const Buffer& signature,
-                                                           AuthorizationSet* output_params,
-                                                           Buffer* output);
+template <>
+keymaster_error_t KeymasterPassthroughOperation<keymaster1_device_t>::Finish(
+    const AuthorizationSet& input_params, const Buffer& input, const Buffer& signature,
+    AuthorizationSet* output_params, Buffer* output);
+template <>
+keymaster_error_t KeymasterPassthroughOperation<keymaster2_device_t>::Finish(
+    const AuthorizationSet& input_params, const Buffer& input, const Buffer& signature,
+    AuthorizationSet* output_params, Buffer* output);
 
 template <typename KeymasterDeviceType>
-class KeymasterPassthroughOperationFactory : public OperationFactory{
+class KeymasterPassthroughOperationFactory : public OperationFactory {
   public:
     KeymasterPassthroughOperationFactory(keymaster_algorithm_t algorithm,
-            keymaster_purpose_t purpose, const KeymasterDeviceType* km_device) :
-            key_type_(algorithm, purpose), km_device_(km_device) {
-    }
+                                         keymaster_purpose_t purpose,
+                                         const KeymasterDeviceType* km_device)
+        : key_type_(algorithm, purpose), km_device_(km_device) {}
     virtual ~KeymasterPassthroughOperationFactory() {}
 
-    KeyType registry_key() const override {
-        return key_type_;
-    }
+    KeyType registry_key() const override { return key_type_; }
 
     // Factory methods
-    OperationPtr CreateOperation(const Key& key, const AuthorizationSet& /*begin_params*/,
+    OperationPtr CreateOperation(Key&& key, const AuthorizationSet& /*begin_params*/,
                                  keymaster_error_t* error) override {
         if (!error) return nullptr;
         *error = KM_ERROR_OK;
-        // make a copy of the blob. It performs internal allocation that can fail.
-        KeymasterKeyBlob blob = key.key_material();
-        if (blob.key_material == nullptr) {
-            *error = KM_ERROR_MEMORY_ALLOCATION_FAILED;
-            return nullptr;
-        }
         OperationPtr op(new (std::nothrow) KeymasterPassthroughOperation<KeymasterDeviceType>(
-                key_type_.purpose, km_device_, std::move(blob)));
+            key_type_.purpose, km_device_, std::move(key)));
         if (!op) {
             *error = KM_ERROR_MEMORY_ALLOCATION_FAILED;
         }
@@ -142,11 +127,11 @@ class KeymasterPassthroughOperationFactory : public OperationFactory{
         *digest_count = 0;
         return NULL;
     }
+
   private:
     KeyType key_type_;
     const KeymasterDeviceType* km_device_;
 };
-
 
 }  // namespace keymaster
 

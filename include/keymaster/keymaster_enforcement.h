@@ -52,7 +52,7 @@ class KeymasterEnforcement {
      * the given operation params and handle. Used for encrypt, decrypt sign, and verify.
      */
     keymaster_error_t AuthorizeOperation(const keymaster_purpose_t purpose, const km_id_t keyid,
-                                         const AuthorizationSet& auth_set,
+                                         const AuthProxy& auth_set,
                                          const AuthorizationSet& operation_params,
                                          keymaster_operation_handle_t op_handle,
                                          bool is_begin_operation);
@@ -63,7 +63,7 @@ class KeymasterEnforcement {
      * the given operation params. Used for encrypt, decrypt sign, and verify.
      */
     keymaster_error_t AuthorizeBegin(const keymaster_purpose_t purpose, const km_id_t keyid,
-                                     const AuthorizationSet& auth_set,
+                                     const AuthProxy& auth_set,
                                      const AuthorizationSet& operation_params);
 
     /**
@@ -71,7 +71,7 @@ class KeymasterEnforcement {
      * return KM_ERROR_OK if all criteria is met for the given purpose in the authorization set with
      * the given operation params and handle. Used for encrypt, decrypt sign, and verify.
      */
-    keymaster_error_t AuthorizeUpdate(const AuthorizationSet& auth_set,
+    keymaster_error_t AuthorizeUpdate(const AuthProxy& auth_set,
                                       const AuthorizationSet& operation_params,
                                       keymaster_operation_handle_t op_handle) {
         return AuthorizeUpdateOrFinish(auth_set, operation_params, op_handle);
@@ -82,7 +82,7 @@ class KeymasterEnforcement {
      * return KM_ERROR_OK if all criteria is met for the given purpose in the authorization set with
      * the given operation params and handle. Used for encrypt, decrypt sign, and verify.
      */
-    keymaster_error_t AuthorizeFinish(const AuthorizationSet& auth_set,
+    keymaster_error_t AuthorizeFinish(const AuthProxy& auth_set,
                                       const AuthorizationSet& operation_params,
                                       keymaster_operation_handle_t op_handle) {
         return AuthorizeUpdateOrFinish(auth_set, operation_params, op_handle);
@@ -157,15 +157,15 @@ class KeymasterEnforcement {
     virtual bool CreateKeyId(const keymaster_key_blob_t& key_blob, km_id_t* keyid) const = 0;
 
   private:
-    keymaster_error_t AuthorizeUpdateOrFinish(const AuthorizationSet& auth_set,
+    keymaster_error_t AuthorizeUpdateOrFinish(const AuthProxy& auth_set,
                                               const AuthorizationSet& operation_params,
                                               keymaster_operation_handle_t op_handle);
 
     bool MinTimeBetweenOpsPassed(uint32_t min_time_between, const km_id_t keyid);
     bool MaxUsesPerBootNotExceeded(const km_id_t keyid, uint32_t max_uses);
-    bool AuthTokenMatches(const AuthorizationSet& auth_set,
-                          const AuthorizationSet& operation_params, const uint64_t user_secure_id,
-                          const int auth_type_index, const int auth_timeout_index,
+    bool AuthTokenMatches(const AuthProxy& auth_set, const AuthorizationSet& operation_params,
+                          const uint64_t user_secure_id, const int auth_type_index,
+                          const int auth_timeout_index,
                           const keymaster_operation_handle_t op_handle,
                           bool is_begin_operation) const;
 
