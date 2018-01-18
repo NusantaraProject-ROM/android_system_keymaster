@@ -769,6 +769,45 @@ struct ComputeSharedHmacResponse : public KeymasterResponse {
     KeymasterBlob sharing_check;
 };
 
+struct ImportWrappedKeyRequest : public KeymasterMessage {
+    explicit ImportWrappedKeyRequest(int32_t ver = MAX_MESSAGE_VERSION) : KeymasterMessage(ver) {}
+
+    void SetWrappedMaterial(const void* key_material, size_t length);
+    void SetWrappingMaterial(const void* key_material, size_t length);
+    void SetMaskingKeyMaterial(const void* key_material, size_t length);
+
+    void SetKeyMaterial(const keymaster_key_blob_t& wrapped, const keymaster_key_blob_t& wrapping) {
+        SetWrappedMaterial(wrapped.key_material, wrapped.key_material_size);
+        SetWrappingMaterial(wrapping.key_material, wrapping.key_material_size);
+    }
+
+    size_t SerializedSize() const override;
+    uint8_t* Serialize(uint8_t* buf, const uint8_t* end) const override;
+    bool Deserialize(const uint8_t** buf_ptr, const uint8_t* end) override;
+
+    KeymasterKeyBlob wrapped_key;
+    KeymasterKeyBlob wrapping_key;
+    KeymasterKeyBlob masking_key;
+    AuthorizationSet additional_params;
+};
+
+struct ImportWrappedKeyResponse : public KeymasterResponse {
+    explicit ImportWrappedKeyResponse(int32_t ver = MAX_MESSAGE_VERSION) : KeymasterResponse(ver) {}
+
+    void SetKeyMaterial(const void* key_material, size_t length);
+    void SetKeyMaterial(const keymaster_key_blob_t& blob) {
+        SetKeyMaterial(blob.key_material, blob.key_material_size);
+    }
+
+    size_t NonErrorSerializedSize() const override;
+    uint8_t* NonErrorSerialize(uint8_t* buf, const uint8_t* end) const override;
+    bool NonErrorDeserialize(const uint8_t** buf_ptr, const uint8_t* end) override;
+
+    KeymasterKeyBlob key_blob;
+    AuthorizationSet enforced;
+    AuthorizationSet unenforced;
+};
+
 }  // namespace keymaster
 
 #endif  // SYSTEM_KEYMASTER_ANDROID_KEYMASTER_MESSAGES_H_

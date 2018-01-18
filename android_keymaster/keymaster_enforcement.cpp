@@ -85,6 +85,7 @@ static keymaster_error_t authorized_purpose(const keymaster_purpose_t purpose,
     case KM_PURPOSE_ENCRYPT:
     case KM_PURPOSE_SIGN:
     case KM_PURPOSE_DECRYPT:
+    case KM_PURPOSE_WRAP:
         if (auth_set.Contains(TAG_PURPOSE, purpose))
             return KM_ERROR_OK;
         return KM_ERROR_INCOMPATIBLE_PURPOSE;
@@ -128,6 +129,7 @@ keymaster_error_t KeymasterEnforcement::AuthorizeOperation(const keymaster_purpo
         case KM_PURPOSE_DECRYPT:
         case KM_PURPOSE_SIGN:
         case KM_PURPOSE_DERIVE_KEY:
+        case KM_PURPOSE_WRAP:
             break;
         };
     };

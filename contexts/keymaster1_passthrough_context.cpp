@@ -72,6 +72,9 @@ KeyFactory* Keymaster1PassthroughContext::GetKeyFactory(keymaster_algorithm_t al
             result.reset(new Keymaster1ArbitrationFactory<HmacKeyFactory>(pt_engine_.get(),
                     KM_ALGORITHM_HMAC, device_, this, this));
             break;
+        case KM_ALGORITHM_TRIPLE_DES:
+            // Not supported by KM1.
+            return nullptr;
         }
     }
     return result.get();
@@ -249,6 +252,12 @@ keymaster_error_t Keymaster1PassthroughContext::GenerateAttestation(const Key& k
 
     return generate_attestation(asymmetric_key, attest_params,
             *attestation_chain, *attestation_key, *this, cert_chain);
+}
+
+keymaster_error_t Keymaster1PassthroughContext::UnwrapKey(
+    const KeymasterKeyBlob&, const KeymasterKeyBlob&, const AuthorizationSet&,
+    const KeymasterKeyBlob&, AuthorizationSet*, keymaster_key_format_t*, KeymasterKeyBlob*) const {
+    return KM_ERROR_UNIMPLEMENTED;
 }
 
 } // namespace keymaster

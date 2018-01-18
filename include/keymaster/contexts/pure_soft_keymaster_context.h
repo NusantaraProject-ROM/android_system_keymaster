@@ -84,11 +84,17 @@ class PureSoftKeymasterContext: public KeymasterContext,
                                     AuthorizationSet* hw_enforced,
                                     AuthorizationSet* sw_enforced) const override;
 
+    keymaster_error_t
+    UnwrapKey(const KeymasterKeyBlob& wrapped_key_blob, const KeymasterKeyBlob& wrapping_key_blob,
+              const AuthorizationSet& wrapping_key_params, const KeymasterKeyBlob& masking_key,
+              AuthorizationSet* wrapped_key_params, keymaster_key_format_t* wrapped_key_format,
+              KeymasterKeyBlob* wrapped_key_material) const override;
 
   protected:
     std::unique_ptr<KeyFactory> rsa_factory_;
     std::unique_ptr<KeyFactory> ec_factory_;
     std::unique_ptr<KeyFactory> aes_factory_;
+    std::unique_ptr<KeyFactory> tdes_factory_;
     std::unique_ptr<KeyFactory> hmac_factory_;
     uint32_t os_version_;
     uint32_t os_patchlevel_;

@@ -280,6 +280,10 @@ class Keymaster2Test : public testing::TestWithParam<InstanceCreatorPtr> {
     std::string DecryptMessage(const AuthorizationSet& update_params, const std::string& ciphertext,
                                keymaster_block_mode_t block_mode, keymaster_padding_t padding,
                                const std::string& nonce);
+    std::string DecryptMessageWithParams(const std::string& message,
+                                         const AuthorizationSet& begin_params,
+                                         const AuthorizationSet& update_params,
+                                         AuthorizationSet* output_params);
 
     void CheckHmacTestVector(const std::string& key, const std::string& message,
                              keymaster_digest_t digest, std::string expected_mac);
@@ -288,6 +292,10 @@ class Keymaster2Test : public testing::TestWithParam<InstanceCreatorPtr> {
                                const std::string& expected_ciphertext);
     void CheckAesCtrTestVector(const std::string& key, const std::string& nonce,
                                const std::string& message, const std::string& expected_ciphertext);
+    void CheckTripleDesTestVector(keymaster_purpose_t purpose, keymaster_block_mode_t mode,
+                                  keymaster_padding_t padding, const std::string& key,
+                                  const std::string& iv, const std::string& message,
+                                  const std::string& expected_ciphertext);
     AuthorizationSet UserAuthParams();
     AuthorizationSet ClientParams();
 
@@ -313,6 +321,14 @@ class Keymaster2Test : public testing::TestWithParam<InstanceCreatorPtr> {
         FreeKeyBlob();
         blob_.key_material = key;
         blob_.key_material_size = key_length;
+    }
+
+    void set_key_blob(KeymasterKeyBlob blob) { blob_ = blob.release(); }
+    void set_key_characteristics(const AuthorizationSet& hw_enforced,
+                                 const AuthorizationSet& sw_enforced) {
+        FreeCharacteristics();
+        hw_enforced.CopyToParamSet(&characteristics_.hw_enforced);
+        sw_enforced.CopyToParamSet(&characteristics_.sw_enforced);
     }
 
     AuthorizationSet client_params() {

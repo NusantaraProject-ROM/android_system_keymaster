@@ -25,16 +25,17 @@
 #include <keymaster/key_blob_utils/integrity_assured_key_blob.h>
 #include <keymaster/key_blob_utils/ocb_utils.h>
 #include <keymaster/key_blob_utils/software_keyblobs.h>
-#include <keymaster/legacy_support/ec_keymaster0_key.h>
-#include <keymaster/legacy_support/ec_keymaster1_key.h>
-#include <keymaster/legacy_support/keymaster0_engine.h>
-#include <keymaster/legacy_support/rsa_keymaster0_key.h>
-#include <keymaster/legacy_support/rsa_keymaster1_key.h>
 #include <keymaster/km_openssl/aes_key.h>
 #include <keymaster/km_openssl/asymmetric_key.h>
 #include <keymaster/km_openssl/attestation_utils.h>
 #include <keymaster/km_openssl/hmac_key.h>
 #include <keymaster/km_openssl/openssl_err.h>
+#include <keymaster/km_openssl/triple_des_key.h>
+#include <keymaster/legacy_support/ec_keymaster0_key.h>
+#include <keymaster/legacy_support/ec_keymaster1_key.h>
+#include <keymaster/legacy_support/keymaster0_engine.h>
+#include <keymaster/legacy_support/rsa_keymaster0_key.h>
+#include <keymaster/legacy_support/rsa_keymaster1_key.h>
 #include <keymaster/logger.h>
 
 #include "soft_attestation_cert.h"
@@ -53,8 +54,10 @@ KeymasterBlob string2Blob(const std::string& str) {
 
 SoftKeymasterContext::SoftKeymasterContext(const std::string& root_of_trust)
     : rsa_factory_(new RsaKeyFactory(this)), ec_factory_(new EcKeyFactory(this)),
-      aes_factory_(new AesKeyFactory(this, this)), hmac_factory_(new HmacKeyFactory(this, this)),
-      km1_dev_(nullptr), root_of_trust_(string2Blob(root_of_trust)), os_version_(0), os_patchlevel_(0) {}
+      aes_factory_(new AesKeyFactory(this, this)),
+      tdes_factory_(new TripleDesKeyFactory(this, this)),
+      hmac_factory_(new HmacKeyFactory(this, this)), km1_dev_(nullptr),
+      root_of_trust_(string2Blob(root_of_trust)), os_version_(0), os_patchlevel_(0) {}
 
 SoftKeymasterContext::~SoftKeymasterContext() {}
 
@@ -111,6 +114,8 @@ KeyFactory* SoftKeymasterContext::GetKeyFactory(keymaster_algorithm_t algorithm)
         return ec_factory_.get();
     case KM_ALGORITHM_AES:
         return aes_factory_.get();
+    case KM_ALGORITHM_TRIPLE_DES:
+        return tdes_factory_.get();
     case KM_ALGORITHM_HMAC:
         return hmac_factory_.get();
     default:
@@ -464,5 +469,11 @@ keymaster_error_t SoftKeymasterContext::GenerateAttestation(const Key& key,
             *attestation_chain, *attestation_key, *this, cert_chain);
 }
 
+keymaster_error_t SoftKeymasterContext::UnwrapKey(const KeymasterKeyBlob&, const KeymasterKeyBlob&,
+                                                  const AuthorizationSet&, const KeymasterKeyBlob&,
+                                                  AuthorizationSet*, keymaster_key_format_t*,
+                                                  KeymasterKeyBlob*) const {
+    return KM_ERROR_UNIMPLEMENTED;
+}
 
 }  // namespace keymaster

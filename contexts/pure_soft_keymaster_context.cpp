@@ -19,15 +19,13 @@
 #include <memory>
 
 #include <openssl/aes.h>
+#include <openssl/evp.h>
 #include <openssl/hmac.h>
 #include <openssl/rand.h>
 #include <openssl/sha.h>
-#include <openssl/evp.h>
 #include <openssl/x509v3.h>
 
 #include <keymaster/android_keymaster_utils.h>
-#include <keymaster/logger.h>
-
 #include <keymaster/key_blob_utils/auth_encrypted_key_blob.h>
 #include <keymaster/key_blob_utils/integrity_assured_key_blob.h>
 #include <keymaster/key_blob_utils/ocb_utils.h>
@@ -41,6 +39,10 @@
 #include <keymaster/km_openssl/openssl_utils.h>
 #include <keymaster/km_openssl/rsa_key_factory.h>
 #include <keymaster/km_openssl/soft_keymaster_enforcement.h>
+#include <keymaster/km_openssl/triple_des_key.h>
+#include <keymaster/logger.h>
+#include <keymaster/operation.h>
+#include <keymaster/wrapped_key.h>
 
 #include "soft_attestation_cert.h"
 
@@ -48,17 +50,11 @@ using std::unique_ptr;
 
 namespace keymaster {
 
-namespace {
-
-static uint8_t master_key_bytes[AES_BLOCK_SIZE] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0};
-const KeymasterKeyBlob MASTER_KEY(master_key_bytes, array_length(master_key_bytes));
-
-}  // anonymous namespace
-
 PureSoftKeymasterContext::PureSoftKeymasterContext()
     : rsa_factory_(new RsaKeyFactory(this)), ec_factory_(new EcKeyFactory(this)),
-      aes_factory_(new AesKeyFactory(this, this)), hmac_factory_(new HmacKeyFactory(this, this)),
-      os_version_(0), os_patchlevel_(0),
+      aes_factory_(new AesKeyFactory(this, this)),
+      tdes_factory_(new TripleDesKeyFactory(this, this)),
+      hmac_factory_(new HmacKeyFactory(this, this)), os_version_(0), os_patchlevel_(0),
       soft_keymaster_enforcement_(64, 64) {}
 
 PureSoftKeymasterContext::~PureSoftKeymasterContext() {}
@@ -83,6 +79,8 @@ KeyFactory* PureSoftKeymasterContext::GetKeyFactory(keymaster_algorithm_t algori
         return ec_factory_.get();
     case KM_ALGORITHM_AES:
         return aes_factory_.get();
+    case KM_ALGORITHM_TRIPLE_DES:
+        return tdes_factory_.get();
     case KM_ALGORITHM_HMAC:
         return hmac_factory_.get();
     default:
@@ -247,6 +245,165 @@ keymaster_error_t PureSoftKeymasterContext::GenerateAttestation(const Key& key,
 
     return generate_attestation(asymmetric_key, attest_params,
             *attestation_chain, *attestation_key, *this, cert_chain);
+}
+
+static keymaster_error_t TranslateAuthorizationSetError(AuthorizationSet::Error err) {
+    switch (err) {
+    case AuthorizationSet::OK:
+        return KM_ERROR_OK;
+    case AuthorizationSet::ALLOCATION_FAILURE:
+        return KM_ERROR_MEMORY_ALLOCATION_FAILED;
+    case AuthorizationSet::MALFORMED_DATA:
+        return KM_ERROR_UNKNOWN_ERROR;
+    }
+    return KM_ERROR_OK;
+}
+
+keymaster_error_t PureSoftKeymasterContext::UnwrapKey(
+    const KeymasterKeyBlob& wrapped_key_blob, const KeymasterKeyBlob& wrapping_key_blob,
+    const AuthorizationSet& /* wrapping_key_params */, const KeymasterKeyBlob& masking_key,
+    AuthorizationSet* wrapped_key_params, keymaster_key_format_t* wrapped_key_format,
+    KeymasterKeyBlob* wrapped_key_material) const {
+    keymaster_error_t error = KM_ERROR_OK;
+
+    if (!wrapped_key_material) return KM_ERROR_UNEXPECTED_NULL_POINTER;
+
+    // Parse wrapped key data
+    KeymasterBlob iv;
+    KeymasterKeyBlob transit_key;
+    KeymasterKeyBlob secure_key;
+    KeymasterBlob tag;
+    KeymasterBlob wrapped_key_description;
+    error = parse_wrapped_key(wrapped_key_blob, &iv, &transit_key, &secure_key, &tag,
+                              wrapped_key_params, wrapped_key_format, &wrapped_key_description);
+    if (error != KM_ERROR_OK) return error;
+
+    UniquePtr<Key> key;
+    auto wrapping_key_params = AuthorizationSetBuilder()
+                                   .RsaEncryptionKey(2048, 65537)
+                                   .Digest(KM_DIGEST_SHA1)
+                                   .Padding(KM_PAD_RSA_OAEP)
+                                   .Authorization(TAG_PURPOSE, KM_PURPOSE_WRAP)
+                                   .build();
+    error = ParseKeyBlob(wrapping_key_blob, wrapping_key_params, &key);
+    if (error != KM_ERROR_OK) return error;
+
+    // Ensure the wrapping key has the right purpose
+    if (!key->hw_enforced().Contains(TAG_PURPOSE, KM_PURPOSE_WRAP) &&
+        !key->sw_enforced().Contains(TAG_PURPOSE, KM_PURPOSE_WRAP)) {
+        return KM_ERROR_INCOMPATIBLE_PURPOSE;
+    }
+
+    auto operation_factory = GetOperationFactory(KM_ALGORITHM_RSA, KM_PURPOSE_DECRYPT);
+    if (!operation_factory) return KM_ERROR_UNKNOWN_ERROR;
+
+    AuthorizationSet out_params;
+    OperationPtr operation(
+        operation_factory->CreateOperation(move(*key), wrapping_key_params, &error));
+    if (!operation.get()) return error;
+
+    error = operation->Begin(wrapping_key_params, &out_params);
+    if (error != KM_ERROR_OK) return error;
+
+    Buffer input;
+    Buffer output;
+    if (!input.Reinitialize(transit_key.key_material, transit_key.key_material_size)) {
+        return KM_ERROR_MEMORY_ALLOCATION_FAILED;
+    }
+
+    error = operation->Finish(wrapping_key_params, input, Buffer() /* signature */, &out_params,
+                              &output);
+    if (error != KM_ERROR_OK) return error;
+
+    // decrypt the encrypted key material with the transit key
+    KeymasterKeyBlob key_material = {output.peek_read(), output.available_read()};
+
+    // XOR the transit key with the masking key
+    if (key_material.key_material_size != masking_key.key_material_size) {
+        return KM_ERROR_INVALID_ARGUMENT;
+    }
+    for (size_t i = 0; i < key_material.key_material_size; i++) {
+        key_material.writable_data()[i] ^= masking_key.key_material[i];
+    }
+
+    auto transit_key_authorizations = AuthorizationSetBuilder()
+                                          .AesEncryptionKey(256)
+                                          .Padding(KM_PAD_NONE)
+                                          .Authorization(TAG_BLOCK_MODE, KM_MODE_GCM)
+                                          .Authorization(TAG_NONCE, iv)
+                                          .Authorization(TAG_MIN_MAC_LENGTH, 128)
+                                          .build();
+    if (transit_key_authorizations.is_valid() != AuthorizationSet::Error::OK) {
+        return TranslateAuthorizationSetError(transit_key_authorizations.is_valid());
+    }
+    auto gcm_params = AuthorizationSetBuilder()
+                          .Padding(KM_PAD_NONE)
+                          .Authorization(TAG_BLOCK_MODE, KM_MODE_GCM)
+                          .Authorization(TAG_NONCE, iv)
+                          .Authorization(TAG_MAC_LENGTH, 128)
+                          .build();
+    if (gcm_params.is_valid() != AuthorizationSet::Error::OK) {
+        return TranslateAuthorizationSetError(transit_key_authorizations.is_valid());
+    }
+
+    auto aes_factory = GetKeyFactory(KM_ALGORITHM_AES);
+    if (!aes_factory) return KM_ERROR_UNKNOWN_ERROR;
+
+    UniquePtr<Key> aes_key;
+    error = aes_factory->LoadKey(move(key_material), gcm_params, move(transit_key_authorizations),
+                                 AuthorizationSet(), &aes_key);
+    if (error != KM_ERROR_OK) return error;
+
+    auto aes_operation_factory = GetOperationFactory(KM_ALGORITHM_AES, KM_PURPOSE_DECRYPT);
+    if (!aes_operation_factory) return KM_ERROR_UNKNOWN_ERROR;
+
+    OperationPtr aes_operation(
+        aes_operation_factory->CreateOperation(move(*aes_key), gcm_params, &error));
+    if (!aes_operation.get()) return error;
+
+    error = aes_operation->Begin(gcm_params, &out_params);
+    if (error != KM_ERROR_OK) return error;
+
+    size_t consumed = 0;
+    Buffer encrypted_key, plaintext;
+    if (!plaintext.Reinitialize(secure_key.key_material_size + tag.data_length)) {
+        return KM_ERROR_MEMORY_ALLOCATION_FAILED;
+    }
+    if (!encrypted_key.Reinitialize(secure_key.key_material_size + tag.data_length)) {
+        return KM_ERROR_MEMORY_ALLOCATION_FAILED;
+    }
+    if (!encrypted_key.write(secure_key.key_material, secure_key.key_material_size)) {
+        return KM_ERROR_UNKNOWN_ERROR;
+    }
+    if (!encrypted_key.write(tag.data, tag.data_length)) {
+        return KM_ERROR_UNKNOWN_ERROR;
+    }
+
+    AuthorizationSet update_outparams;
+    auto update_params = AuthorizationSetBuilder()
+                             .Authorization(TAG_ASSOCIATED_DATA, wrapped_key_description.data,
+                                            wrapped_key_description.data_length)
+                             .build();
+    if (update_params.is_valid() != AuthorizationSet::Error::OK) {
+        return TranslateAuthorizationSetError(transit_key_authorizations.is_valid());
+    }
+
+    error = aes_operation->Update(update_params, encrypted_key, &update_outparams, &plaintext,
+                                  &consumed);
+    if (error != KM_ERROR_OK) return error;
+
+    AuthorizationSet finish_params, finish_out_params;
+    Buffer finish_input;
+    error = aes_operation->Finish(finish_params, finish_input, Buffer() /* signature */,
+                                  &finish_out_params, &plaintext);
+    if (error != KM_ERROR_OK) return error;
+
+    *wrapped_key_material = {plaintext.peek_read(), plaintext.available_read()};
+    if (!wrapped_key_material->key_material && plaintext.peek_read()) {
+        return KM_ERROR_MEMORY_ALLOCATION_FAILED;
+    }
+
+    return error;
 }
 
 }  // namespace keymaster

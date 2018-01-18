@@ -145,4 +145,10 @@ keymaster_error_t Keymaster2PassthroughContext::GenerateAttestation(const Key& k
     return rc;
 }
 
+keymaster_error_t Keymaster2PassthroughContext::UnwrapKey(
+    const KeymasterKeyBlob&, const KeymasterKeyBlob&, const AuthorizationSet&,
+    const KeymasterKeyBlob&, AuthorizationSet*, keymaster_key_format_t*, KeymasterKeyBlob*) const {
+    return KM_ERROR_UNIMPLEMENTED;
+}
+
 } // namespace keymaster

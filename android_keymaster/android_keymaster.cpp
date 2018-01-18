@@ -65,6 +65,9 @@ AndroidKeymaster::AndroidKeymaster(KeymasterContext* context, size_t operation_t
 
 AndroidKeymaster::~AndroidKeymaster() {}
 
+AndroidKeymaster::AndroidKeymaster(AndroidKeymaster&& other)
+    : context_(move(other.context_)), operation_table_(move(other.operation_table_)) {}
+
 // TODO(swillden): Unify support analysis.  Right now, we have per-keytype methods that determine if
 // specific modes, padding, etc. are supported for that key type, and AndroidKeymaster also has
 // methods that return the same information.  They'll get out of sync.  Best to put the knowledge in
@@ -465,6 +468,40 @@ keymaster_error_t AndroidKeymaster::LoadKey(const keymaster_key_blob_t& key_blob
         return error;
     if (factory) *factory = (*key)->key_factory();
     return CheckVersionInfo((*key)->hw_enforced(), (*key)->sw_enforced(), *context_);
+}
+
+void AndroidKeymaster::ImportWrappedKey(const ImportWrappedKeyRequest& request,
+                                        ImportWrappedKeyResponse* response) {
+    if (!response) return;
+
+    KeymasterKeyBlob secret_key;
+    AuthorizationSet key_description;
+    keymaster_key_format_t key_format;
+
+    response->error =
+        context_->UnwrapKey(request.wrapped_key, request.wrapping_key, request.additional_params,
+                            request.masking_key, &key_description, &key_format, &secret_key);
+
+    if (response->error != KM_ERROR_OK) {
+        return;
+    }
+
+    keymaster_algorithm_t algorithm;
+    key_description.GetTagValue(TAG_ALGORITHM, &algorithm);
+    KeyFactory* factory = 0;
+
+    if (!key_description.GetTagValue(TAG_ALGORITHM, &algorithm) ||
+        !(factory = context_->GetKeyFactory(algorithm))) {
+        response->error = KM_ERROR_UNSUPPORTED_ALGORITHM;
+    } else {
+        KeymasterKeyBlob key_blob;
+        response->error =
+            factory->ImportKey(key_description, key_format, KeymasterKeyBlob(secret_key), &key_blob,
+                               &response->enforced, &response->unenforced);
+        if (response->error == KM_ERROR_OK) {
+            response->key_blob = key_blob;
+        }
+    }
 }
 
 }  // namespace keymaster

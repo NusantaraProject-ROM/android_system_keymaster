@@ -63,6 +63,8 @@ LDLIBS=-L$(BASE)/../boringssl/build/crypto -lcrypto -lpthread -lstdc++ -lgcov
 CPPSRCS=\
 	km_openssl/aes_key.cpp \
 	km_openssl/aes_operation.cpp \
+	km_openssl/triple_des_key.cpp \
+	km_openssl/triple_des_operation.cpp \
 	android_keymaster/android_keymaster.cpp \
 	android_keymaster/android_keymaster_messages.cpp \
 	tests/android_keymaster_messages_test.cpp \
@@ -126,11 +128,13 @@ CPPSRCS=\
 	android_keymaster/serializable.cpp \
 	contexts/soft_keymaster_context.cpp \
 	contexts/soft_keymaster_device.cpp \
+	contexts/pure_soft_keymaster_context.cpp \
 	km_openssl/symmetric_key.cpp \
 	km_openssl/software_random_source.cpp \
 	contexts/soft_attestation_cert.cpp \
 	km_openssl/attestation_utils.cpp \
-	key_blob_utils/software_keyblobs.cpp
+	key_blob_utils/software_keyblobs.cpp \
+	km_openssl/wrapped_key.cpp
 
 CCSRCS=$(GTEST)/src/gtest-all.cc
 CSRCS=key_blob_utils/ocb.c
@@ -331,54 +335,60 @@ tests/android_keymaster_messages_test: tests/android_keymaster_messages_test.o \
 	$(GTEST_OBJS)
 
 tests/android_keymaster_test: tests/android_keymaster_test.o \
-	km_openssl/aes_key.o \
-	km_openssl/aes_operation.o \
 	android_keymaster/android_keymaster.o \
 	android_keymaster/android_keymaster_messages.o \
-	tests/android_keymaster_test_utils.o \
 	android_keymaster/android_keymaster_utils.o \
+	android_keymaster/authorization_set.o \
+	android_keymaster/keymaster_enforcement.o \
+	android_keymaster/keymaster_tags.o \
+	android_keymaster/logger.o \
+	android_keymaster/operation.o \
+	android_keymaster/operation_table.o \
+	android_keymaster/serializable.o \
+	contexts/pure_soft_keymaster_context.o \
+	contexts/soft_attestation_cert.o \
+	contexts/soft_keymaster_context.o \
+	contexts/soft_keymaster_device.o \
+	key_blob_utils/auth_encrypted_key_blob.o \
+	key_blob_utils/integrity_assured_key_blob.o \
+	key_blob_utils/ocb.o \
+	key_blob_utils/ocb_utils.o \
+	key_blob_utils/software_keyblobs.o \
+	km_openssl/aes_key.o \
+	km_openssl/aes_key.o \
+	km_openssl/aes_operation.o \
+	km_openssl/aes_operation.o \
 	km_openssl/asymmetric_key.o \
 	km_openssl/asymmetric_key_factory.o \
 	km_openssl/attestation_record.o \
-	key_blob_utils/auth_encrypted_key_blob.o \
-	android_keymaster/authorization_set.o \
+	km_openssl/attestation_utils.o \
+	km_openssl/block_cipher_operation.o \
+	km_openssl/ckdf.o \
 	km_openssl/ec_key.o \
 	km_openssl/ec_key_factory.o \
-	legacy_support/ec_keymaster0_key.o \
-	legacy_support/ec_keymaster1_key.o \
-	legacy_support/ecdsa_keymaster1_operation.o \
 	km_openssl/ecdsa_operation.o \
 	km_openssl/hmac_key.o \
 	km_openssl/hmac_operation.o \
-	km_openssl/ckdf.o \
-	key_blob_utils/integrity_assured_key_blob.o \
-	legacy_support/keymaster0_engine.o \
-	legacy_support/keymaster1_engine.o \
-	android_keymaster/keymaster_enforcement.o \
-	km_openssl/soft_keymaster_enforcement.o \
-	android_keymaster/keymaster_tags.o \
-	android_keymaster/logger.o \
-	key_blob_utils/ocb.o \
-	key_blob_utils/ocb_utils.o \
 	km_openssl/openssl_err.o \
 	km_openssl/openssl_utils.o \
-	android_keymaster/operation.o \
-	android_keymaster/operation_table.o \
 	km_openssl/rsa_key.o \
 	km_openssl/rsa_key_factory.o \
+	km_openssl/rsa_operation.o \
+	km_openssl/soft_keymaster_enforcement.o \
+	km_openssl/software_random_source.o \
+	km_openssl/symmetric_key.o \
+	km_openssl/triple_des_key.o \
+	km_openssl/triple_des_operation.o \
+	km_openssl/wrapped_key.o \
+	legacy_support/ec_keymaster0_key.o \
+	legacy_support/ec_keymaster1_key.o \
+	legacy_support/ecdsa_keymaster1_operation.o \
+	legacy_support/keymaster0_engine.o \
+	legacy_support/keymaster1_engine.o \
 	legacy_support/rsa_keymaster0_key.o \
 	legacy_support/rsa_keymaster1_key.o \
 	legacy_support/rsa_keymaster1_operation.o \
-	km_openssl/rsa_operation.o \
-	android_keymaster/serializable.o \
-	contexts/soft_keymaster_context.o \
-	contexts/soft_keymaster_device.o \
-	km_openssl/symmetric_key.o \
-	km_openssl/software_random_source.o \
-	contexts/soft_attestation_cert.o \
-	km_openssl/attestation_utils.o \
-	km_openssl/block_cipher_operation.o \
-	key_blob_utils/software_keyblobs.o \
+	tests/android_keymaster_test_utils.o \
 	$(BASE)/system/security/keystore/keyblob_utils.o \
 	$(GTEST_OBJS)
 
@@ -405,6 +415,18 @@ tests/attestation_record_test: tests/attestation_record_test.o \
 	android_keymaster/logger.o \
 	km_openssl/openssl_err.o \
 	android_keymaster/serializable.o \
+	$(GTEST_OBJS)
+
+tests/wrapped_key_test: tests/wrapped_key_test.o \
+	tests/android_keymaster_test_utils.o \
+	android_keymaster/android_keymaster_utils.o \
+	km_openssl/attestation_record.o \
+	android_keymaster/authorization_set.o \
+	android_keymaster/keymaster_tags.o \
+	android_keymaster/logger.o \
+	km_openssl/openssl_err.o \
+	android_keymaster/serializable.o \
+	km_openssl/wrapped_key.o \
 	$(GTEST_OBJS)
 
 $(GTEST)/src/gtest-all.o: CXXFLAGS:=$(subst -Wmissing-declarations,,$(CXXFLAGS))

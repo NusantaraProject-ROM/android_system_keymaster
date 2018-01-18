@@ -331,11 +331,28 @@ Return<void> AndroidKeymaster4Device::importKey(const hidl_vec<KeyParameter>& pa
     return Void();
 }
 
-Return<void> AndroidKeymaster4Device::importWrappedKey(
-    const hidl_vec<uint8_t>& /* wrappedKeyData */, const hidl_vec<uint8_t>& /* wrappingKeyBlob */,
-    const hidl_vec<uint8_t>& /* maskingKey */, importWrappedKey_cb _hidl_cb) {
-    // TODO(franksalim): PUT CODE HERE
-    _hidl_cb(ErrorCode::UNIMPLEMENTED, hidl_vec<uint8_t>(), KeyCharacteristics());
+Return<void> AndroidKeymaster4Device::importWrappedKey(const hidl_vec<uint8_t>& wrappedKeyData,
+                                                       const hidl_vec<uint8_t>& wrappingKeyBlob,
+                                                       const hidl_vec<uint8_t>& maskingKey,
+                                                       importWrappedKey_cb _hidl_cb) {
+
+    ImportWrappedKeyRequest request;
+    request.SetWrappedMaterial(wrappedKeyData.data(), wrappedKeyData.size());
+    request.SetWrappingMaterial(wrappingKeyBlob.data(), wrappingKeyBlob.size());
+    request.SetMaskingKeyMaterial(maskingKey.data(), maskingKey.size());
+    // TODO(franksalim): set request.additional_params when wrapping key params are allowed
+
+    ImportWrappedKeyResponse response;
+    impl_->ImportWrappedKey(request, &response);
+
+    KeyCharacteristics resultCharacteristics;
+    hidl_vec<uint8_t> resultKeyBlob;
+    if (response.error == KM_ERROR_OK) {
+        resultKeyBlob = kmBlob2hidlVec(response.key_blob);
+        resultCharacteristics.hardwareEnforced = kmParamSet2Hidl(response.enforced);
+        resultCharacteristics.softwareEnforced = kmParamSet2Hidl(response.unenforced);
+    }
+    _hidl_cb(legacy_enum_conversion(response.error), resultKeyBlob, resultCharacteristics);
     return Void();
 }
 

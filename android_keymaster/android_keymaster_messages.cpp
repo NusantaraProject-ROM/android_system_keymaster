@@ -631,4 +631,56 @@ bool ComputeSharedHmacResponse::NonErrorDeserialize(const uint8_t** buf_ptr, con
     return deserialize_blob(&sharing_check, buf_ptr, end);
 }
 
+size_t ImportWrappedKeyRequest::SerializedSize() const {
+    return sizeof(uint32_t) /* wrapped_key_data_length */ + wrapped_key.key_material_size +
+           sizeof(uint32_t) /* wrapping_key_data_length */ + wrapping_key.key_material_size +
+           sizeof(uint32_t) /* masking_key_data_length */ + masking_key.key_material_size +
+           additional_params.SerializedSize();
+}
+
+uint8_t* ImportWrappedKeyRequest::Serialize(uint8_t* buf, const uint8_t* end) const {
+    serialize_key_blob(wrapped_key, buf, end);
+    serialize_key_blob(wrapping_key, buf, end);
+    serialize_key_blob(masking_key, buf, end);
+    return additional_params.Serialize(buf, end);
+}
+
+bool ImportWrappedKeyRequest::Deserialize(const uint8_t** buf_ptr, const uint8_t* end) {
+    return deserialize_key_blob(&wrapped_key, buf_ptr, end) &&
+           deserialize_key_blob(&wrapping_key, buf_ptr, end) &&
+           deserialize_key_blob(&masking_key, buf_ptr, end) &&
+           additional_params.Deserialize(buf_ptr, end);
+}
+
+void ImportWrappedKeyRequest::SetWrappedMaterial(const void* key_material, size_t length) {
+    set_key_blob(&wrapped_key, key_material, length);
+}
+
+void ImportWrappedKeyRequest::SetWrappingMaterial(const void* key_material, size_t length) {
+    set_key_blob(&wrapping_key, key_material, length);
+}
+
+void ImportWrappedKeyRequest::SetMaskingKeyMaterial(const void* key_material, size_t length) {
+    set_key_blob(&masking_key, key_material, length);
+}
+
+void ImportWrappedKeyResponse::SetKeyMaterial(const void* key_material, size_t length) {
+    set_key_blob(&key_blob, key_material, length);
+}
+
+size_t ImportWrappedKeyResponse::NonErrorSerializedSize() const {
+    return key_blob_size(key_blob) + enforced.SerializedSize() + unenforced.SerializedSize();
+}
+
+uint8_t* ImportWrappedKeyResponse::NonErrorSerialize(uint8_t* buf, const uint8_t* end) const {
+    buf = serialize_key_blob(key_blob, buf, end);
+    buf = enforced.Serialize(buf, end);
+    return unenforced.Serialize(buf, end);
+}
+
+bool ImportWrappedKeyResponse::NonErrorDeserialize(const uint8_t** buf_ptr, const uint8_t* end) {
+    return deserialize_key_blob(&key_blob, buf_ptr, end) && enforced.Deserialize(buf_ptr, end) &&
+           unenforced.Deserialize(buf_ptr, end);
+}
+
 }  // namespace keymaster

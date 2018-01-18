@@ -140,7 +140,8 @@ bool requiresSoftwareDigesting(keymaster_algorithm_t algorithm, keymaster_purpos
                                const Keymaster1LegacySupport::DigestMap& digest_map) {
     switch (algorithm) {
     case KM_ALGORITHM_AES:
-        LOG(WARNING) << "Not performing software digesting for AES keys";
+    case KM_ALGORITHM_TRIPLE_DES:
+        LOG(WARNING) << "Not performing software digesting for symmetric cipher keys";
         return false;
     case KM_ALGORITHM_HMAC:
     case KM_ALGORITHM_RSA:
