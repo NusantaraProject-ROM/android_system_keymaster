@@ -20,6 +20,7 @@
 #include <assert.h>
 #include <time.h>
 
+#include <initializer_list>
 #include <limits>
 
 #include <openssl/cmac.h>
@@ -38,6 +39,7 @@ namespace {
 constexpr uint8_t kFakeKeyAgreementKey[32] = {};
 constexpr const char* kSharedHmacLabel = "KeymasterSharedMac";
 constexpr const char* kMacVerificationString = "Keymaster HMAC Verification";
+constexpr const char* kAuthVerificationLabel = "Auth Verificvation";
 
 class EvpMdCtx {
   public:
@@ -52,14 +54,12 @@ class EvpMdCtx {
 
 }  // anonymous namespace
 
-uint32_t SoftKeymasterEnforcement::get_current_time() const {
+uint64_t SoftKeymasterEnforcement::get_current_time_ms() const {
     struct timespec tp;
-    int err = clock_gettime(CLOCK_MONOTONIC, &tp);
-    if (err || tp.tv_sec < 0 ||
-        static_cast<unsigned long>(tp.tv_sec) > std::numeric_limits<uint32_t>::max()) {
-        return 0;
-    }
-    return static_cast<uint32_t>(tp.tv_sec);
+    int err = clock_gettime(CLOCK_BOOTTIME, &tp);
+    if (err || tp.tv_sec < 0) return 0;
+
+    return static_cast<uint64_t>(tp.tv_sec) * 1000 + static_cast<uint64_t>(tp.tv_nsec) / 1000000;
 }
 
 bool SoftKeymasterEnforcement::CreateKeyId(const keymaster_key_blob_t& key_blob,
@@ -91,25 +91,50 @@ SoftKeymasterEnforcement::GetHmacSharingParameters(HmacSharingParameters* params
     return KM_ERROR_OK;
 }
 
-keymaster_error_t hmacSha256(const keymaster_key_blob_t& key, const keymaster_blob_t& data,
+namespace {
+
+DEFINE_OPENSSL_OBJECT_POINTER(HMAC_CTX);
+
+keymaster_error_t hmacSha256(const keymaster_key_blob_t& key,
+                             std::initializer_list<const keymaster_blob_t> data_chunks,
                              KeymasterBlob* output) {
     if (!output) return KM_ERROR_UNEXPECTED_NULL_POINTER;
 
     unsigned digest_len = SHA256_DIGEST_LENGTH;
     if (!output->Reset(digest_len)) return KM_ERROR_MEMORY_ALLOCATION_FAILED;
 
-    if (!::HMAC(EVP_sha256(), key.key_material, key.key_material_size, data.data, data.data_length,
-                output->writable_data(), &digest_len)) {
+    HMAC_CTX_Ptr ctx(HMAC_CTX_new());
+    if (!HMAC_Init_ex(ctx.get(), key.key_material, key.key_material_size, EVP_sha256(),
+                      nullptr /* engine*/)) {
         return TranslateLastOpenSslError();
     }
+
+    for (auto& chunk : data_chunks) {
+        if (!HMAC_Update(ctx.get(), chunk.data, chunk.data_length)) {
+            return TranslateLastOpenSslError();
+        }
+    }
+
+    if (!HMAC_Final(ctx.get(), output->writable_data(), &digest_len)) {
+        return TranslateLastOpenSslError();
+    }
+
     if (digest_len != output->data_length) return KM_ERROR_UNKNOWN_ERROR;
+
     return KM_ERROR_OK;
 }
 
-namespace {
+// Helpers for converting types to keymaster_blob_t, for easy feeding of hmacSha256.
+template <typename T, typename = std::enable_if<std::is_integral<T>::value>>
+inline keymaster_blob_t toBlob(const T& t) {
+    return {reinterpret_cast<const uint8_t*>(&t), sizeof(t)};
+}
+inline keymaster_blob_t toBlob(const char* str) {
+    return {reinterpret_cast<const uint8_t*>(str), strlen(str)};
+}
 
-// Perhaps this shoud be in utils, but the impact of that needs to be considred carefully.  For now,
-// just define it here.
+// Perhaps these shoud be in utils, but the impact of that needs to be considered carefully.  For
+// now, just define it here.
 inline bool operator==(const keymaster_blob_t& a, const keymaster_blob_t& b) {
     if (!a.data_length && !b.data_length) return true;
     if (!(a.data && b.data)) return a.data == b.data;
@@ -150,7 +175,30 @@ SoftKeymasterEnforcement::ComputeSharedHmac(const HmacSharingParametersArray& pa
 
     keymaster_blob_t data = {reinterpret_cast<const uint8_t*>(kMacVerificationString),
                              strlen(kMacVerificationString)};
-    return hmacSha256(hmac_key_, data, sharingCheck);
+    return hmacSha256(hmac_key_, {data}, sharingCheck);
+}
+
+VerifyAuthorizationResponse
+SoftKeymasterEnforcement::VerifyAuthorization(const VerifyAuthorizationRequest& request) {
+    // The only thing this implementation provides is timestamp and security level.  Note that this
+    // is an acceptable implementation strategy for production use as well.  Additional verification
+    // need only be provided by an implementation if it is interoperating with another
+    // implementation that requires more.
+    VerifyAuthorizationResponse response;
+    response.token.challenge = request.challenge;
+    response.token.timestamp = get_current_time_ms();
+    response.token.security_level = SecurityLevel();
+    response.error = hmacSha256(hmac_key_,
+                                {
+                                    toBlob(kAuthVerificationLabel),
+                                    toBlob(response.token.challenge),
+                                    toBlob(response.token.timestamp),
+                                    toBlob(response.token.security_level),
+                                    {},  // parametersVerified
+                                },
+                                &response.token.mac);
+
+    return response;
 }
 
 }  // namespace keymaster

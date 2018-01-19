@@ -34,13 +34,16 @@ class SoftKeymasterEnforcement : public KeymasterEnforcement {
                               uint32_t /*timeout*/) const override {
         return false;
     }
-    uint32_t get_current_time() const override;
+    uint64_t get_current_time_ms() const override;
+    keymaster_security_level_t SecurityLevel() const override { return KM_SECURITY_LEVEL_SOFTWARE; }
     bool ValidateTokenSignature(const hw_auth_token_t& /*token*/) const override { return true; }
     bool CreateKeyId(const keymaster_key_blob_t& key_blob, km_id_t* keyid) const override;
 
     keymaster_error_t GetHmacSharingParameters(HmacSharingParameters* params) override;
     keymaster_error_t ComputeSharedHmac(const HmacSharingParametersArray& params_array,
                                         KeymasterBlob* sharingCheck) override;
+    VerifyAuthorizationResponse
+    VerifyAuthorization(const VerifyAuthorizationRequest& request) override;
 
   private:
     bool have_saved_params_ = false;
