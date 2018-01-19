@@ -642,14 +642,18 @@ uint8_t* ImportWrappedKeyRequest::Serialize(uint8_t* buf, const uint8_t* end) co
     serialize_key_blob(wrapped_key, buf, end);
     serialize_key_blob(wrapping_key, buf, end);
     serialize_key_blob(masking_key, buf, end);
-    return additional_params.Serialize(buf, end);
+    buf = additional_params.Serialize(buf, end);
+    buf = append_uint64_to_buf(buf, end, password_sid);
+    return append_uint64_to_buf(buf, end, biometric_sid);
 }
 
 bool ImportWrappedKeyRequest::Deserialize(const uint8_t** buf_ptr, const uint8_t* end) {
     return deserialize_key_blob(&wrapped_key, buf_ptr, end) &&
            deserialize_key_blob(&wrapping_key, buf_ptr, end) &&
            deserialize_key_blob(&masking_key, buf_ptr, end) &&
-           additional_params.Deserialize(buf_ptr, end);
+           additional_params.Deserialize(buf_ptr, end) &&
+           copy_uint64_from_buf(buf_ptr, end, &password_sid) &&
+           copy_uint64_from_buf(buf_ptr, end, &biometric_sid);
 }
 
 void ImportWrappedKeyRequest::SetWrappedMaterial(const void* key_material, size_t length) {

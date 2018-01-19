@@ -486,10 +486,23 @@ void AndroidKeymaster::ImportWrappedKey(const ImportWrappedKeyRequest& request,
         return;
     }
 
-    keymaster_algorithm_t algorithm;
-    key_description.GetTagValue(TAG_ALGORITHM, &algorithm);
-    KeyFactory* factory = 0;
+    int sid_idx = key_description.find(TAG_USER_SECURE_ID);
+    if (sid_idx != -1) {
+        uint8_t sids = key_description[sid_idx].long_integer;
+        if (!key_description.erase(sid_idx)) {
+            response->error = KM_ERROR_UNKNOWN_ERROR;
+            return;
+        }
+        if (sids & HW_AUTH_PASSWORD) {
+            key_description.push_back(TAG_USER_SECURE_ID, request.password_sid);
+        }
+        if (sids & HW_AUTH_FINGERPRINT) {
+            key_description.push_back(TAG_USER_SECURE_ID, request.biometric_sid);
+        }
+    }
 
+    keymaster_algorithm_t algorithm;
+    KeyFactory* factory = 0;
     if (!key_description.GetTagValue(TAG_ALGORITHM, &algorithm) ||
         !(factory = context_->GetKeyFactory(algorithm))) {
         response->error = KM_ERROR_UNSUPPORTED_ALGORITHM;

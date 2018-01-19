@@ -331,16 +331,18 @@ Return<void> AndroidKeymaster4Device::importKey(const hidl_vec<KeyParameter>& pa
     return Void();
 }
 
-Return<void> AndroidKeymaster4Device::importWrappedKey(const hidl_vec<uint8_t>& wrappedKeyData,
-                                                       const hidl_vec<uint8_t>& wrappingKeyBlob,
-                                                       const hidl_vec<uint8_t>& maskingKey,
-                                                       importWrappedKey_cb _hidl_cb) {
+Return<void> AndroidKeymaster4Device::importWrappedKey(
+    const hidl_vec<uint8_t>& wrappedKeyData, const hidl_vec<uint8_t>& wrappingKeyBlob,
+    const hidl_vec<uint8_t>& maskingKey, const hidl_vec<KeyParameter>& unwrappingParams,
+    uint64_t passwordSid, uint64_t biometricSid, importWrappedKey_cb _hidl_cb) {
 
     ImportWrappedKeyRequest request;
     request.SetWrappedMaterial(wrappedKeyData.data(), wrappedKeyData.size());
     request.SetWrappingMaterial(wrappingKeyBlob.data(), wrappingKeyBlob.size());
     request.SetMaskingKeyMaterial(maskingKey.data(), maskingKey.size());
-    // TODO(franksalim): set request.additional_params when wrapping key params are allowed
+    request.additional_params.Reinitialize(KmParamSet(unwrappingParams));
+    request.password_sid = passwordSid;
+    request.biometric_sid = biometricSid;
 
     ImportWrappedKeyResponse response;
     impl_->ImportWrappedKey(request, &response);
