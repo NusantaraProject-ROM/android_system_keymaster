@@ -197,19 +197,19 @@ void addClientAndAppData(const hidl_vec<uint8_t>& clientId, const hidl_vec<uint8
 
 }  // anonymous namespace
 
-AndroidKeymaster4Device::AndroidKeymaster4Device()
+AndroidKeymaster4Device::AndroidKeymaster4Device(SecurityLevel securityLevel)
     : impl_(new ::keymaster::AndroidKeymaster(
           []() -> auto {
               auto context = new PureSoftKeymasterContext();
               context->SetSystemVersion(GetOsVersion(), GetOsPatchlevel());
               return context;
           }(),
-          kOperationTableSize)) {}
+          kOperationTableSize)), securityLevel_(securityLevel) {}
 
 AndroidKeymaster4Device::~AndroidKeymaster4Device() {}
 
 Return<void> AndroidKeymaster4Device::getHardwareInfo(getHardwareInfo_cb _hidl_cb) {
-    _hidl_cb(::android::hardware::keymaster::V4_0::SecurityLevel::SOFTWARE,
+    _hidl_cb(securityLevel_,
              "SoftwareKeymasterDevice", "Google");
     return Void();
 }
@@ -523,8 +523,8 @@ Return<ErrorCode> AndroidKeymaster4Device::abort(uint64_t operationHandle) {
     return legacy_enum_conversion(response.error);
 }
 
-IKeymasterDevice* CreateKeymasterDevice() {
-    return new AndroidKeymaster4Device();
+IKeymasterDevice* CreateKeymasterDevice(SecurityLevel securityLevel) {
+    return new AndroidKeymaster4Device(securityLevel);
 }
 
 }  // namespace ng

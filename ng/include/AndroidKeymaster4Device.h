@@ -41,12 +41,13 @@ using ::android::hardware::keymaster::V4_0::IKeymasterDevice;
 using ::android::hardware::keymaster::V4_0::KeyCharacteristics;
 using ::android::hardware::keymaster::V4_0::KeyParameter;
 using ::android::hardware::keymaster::V4_0::KeyPurpose;
+using ::android::hardware::keymaster::V4_0::SecurityLevel;
 using ::android::hardware::keymaster::V4_0::Tag;
 using ::android::hardware::keymaster::V4_0::VerificationToken;
 
 class AndroidKeymaster4Device : public IKeymasterDevice {
   public:
-    AndroidKeymaster4Device();
+    AndroidKeymaster4Device(SecurityLevel securityLevel);
     virtual ~AndroidKeymaster4Device();
 
     Return<void> getHardwareInfo(getHardwareInfo_cb _hidl_cb) override;
@@ -96,9 +97,10 @@ class AndroidKeymaster4Device : public IKeymasterDevice {
 
   private:
     std::unique_ptr<::keymaster::AndroidKeymaster> impl_;
+    SecurityLevel securityLevel_;
 };
 
-IKeymasterDevice* CreateKeymasterDevice();
+IKeymasterDevice* CreateKeymasterDevice(SecurityLevel securityLevel);
 
 }  // namespace ng
 }  // namespace V4_0
