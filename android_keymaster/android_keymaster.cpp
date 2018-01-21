@@ -195,6 +195,18 @@ AndroidKeymaster::ComputeSharedHmac(const ComputeSharedHmacRequest& request) {
     return response;
 }
 
+VerifyAuthorizationResponse
+AndroidKeymaster::VerifyAuthorization(const VerifyAuthorizationRequest& request) {
+    KeymasterEnforcement* policy = context_->enforcement_policy();
+    if (!policy) {
+        VerifyAuthorizationResponse response;
+        response.error = KM_ERROR_UNIMPLEMENTED;
+        return response;
+    }
+
+    return policy->VerifyAuthorization(request);
+}
+
 void AndroidKeymaster::AddRngEntropy(const AddEntropyRequest& request,
                                      AddEntropyResponse* response) {
     response->error = context_->AddRngEntropy(request.random_data.peek_read(),

@@ -683,4 +683,48 @@ bool ImportWrappedKeyResponse::NonErrorDeserialize(const uint8_t** buf_ptr, cons
            unenforced.Deserialize(buf_ptr, end);
 }
 
+size_t HardwareAuthToken::SerializedSize() const {
+    return sizeof(challenge) + sizeof(user_id) + sizeof(authenticator_id) +
+           sizeof(authenticator_type) + sizeof(timestamp) + blob_size(mac);
+}
+
+uint8_t* HardwareAuthToken::Serialize(uint8_t* buf, const uint8_t* end) const {
+    buf = append_uint64_to_buf(buf, end, challenge);
+    buf = append_uint64_to_buf(buf, end, user_id);
+    buf = append_uint64_to_buf(buf, end, authenticator_id);
+    buf = append_uint32_to_buf(buf, end, authenticator_type);
+    buf = append_uint64_to_buf(buf, end, timestamp);
+    return serialize_blob(mac, buf, end);
+}
+
+bool HardwareAuthToken::Deserialize(const uint8_t** buf_ptr, const uint8_t* end) {
+    return copy_uint64_from_buf(buf_ptr, end, &challenge) &&
+           copy_uint64_from_buf(buf_ptr, end, &user_id) &&
+           copy_uint64_from_buf(buf_ptr, end, &authenticator_id) &&
+           copy_uint32_from_buf(buf_ptr, end, &authenticator_type) &&
+           copy_uint64_from_buf(buf_ptr, end, &timestamp) &&  //
+           deserialize_blob(&mac, buf_ptr, end);
+}
+
+size_t VerificationToken::SerializedSize() const {
+    return sizeof(challenge) + sizeof(timestamp) + parameters_verified.SerializedSize() +
+           sizeof(security_level) + blob_size(mac);
+}
+
+uint8_t* VerificationToken::Serialize(uint8_t* buf, const uint8_t* end) const {
+    buf = append_uint64_to_buf(buf, end, challenge);
+    buf = append_uint64_to_buf(buf, end, timestamp);
+    buf = parameters_verified.Serialize(buf, end);
+    buf = append_uint32_to_buf(buf, end, security_level);
+    return serialize_blob(mac, buf, end);
+}
+
+bool VerificationToken::Deserialize(const uint8_t** buf_ptr, const uint8_t* end) {
+    return copy_uint64_from_buf(buf_ptr, end, &challenge) &&
+           copy_uint64_from_buf(buf_ptr, end, &timestamp) &&
+           parameters_verified.Deserialize(buf_ptr, end) &&
+           copy_uint32_from_buf(buf_ptr, end, &security_level) &&
+           deserialize_blob(&mac, buf_ptr, end);
+}
+
 }  // namespace keymaster
