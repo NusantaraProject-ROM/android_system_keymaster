@@ -790,6 +790,8 @@ struct ImportWrappedKeyRequest : public KeymasterMessage {
     KeymasterKeyBlob wrapping_key;
     KeymasterKeyBlob masking_key;
     AuthorizationSet additional_params;
+    uint64_t password_sid;
+    uint64_t biometric_sid;
 };
 
 struct ImportWrappedKeyResponse : public KeymasterResponse {

@@ -71,6 +71,8 @@ class AndroidKeymaster4Device : public IKeymasterDevice {
     Return<void> importWrappedKey(const hidl_vec<uint8_t>& wrappedKeyData,
                                   const hidl_vec<uint8_t>& wrappingKeyBlob,
                                   const hidl_vec<uint8_t>& maskingKey,
+                                  const hidl_vec<KeyParameter>& unwrappingParams,
+                                  uint64_t passwordSid, uint64_t biometricSid,
                                   importWrappedKey_cb _hidl_cb) override;
     Return<void> exportKey(KeyFormat exportFormat, const hidl_vec<uint8_t>& keyBlob,
                            const hidl_vec<uint8_t>& clientId, const hidl_vec<uint8_t>& appData,
