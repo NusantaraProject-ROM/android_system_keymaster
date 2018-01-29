@@ -347,11 +347,6 @@ keymaster_error_t KeymasterEnforcement::AuthorizeBegin(const keymaster_purpose_t
         case KM_TAG_ALLOW_WHILE_ON_BODY:
             break;
 
-        /* TODO(bcyoung): This is currently handled in keystore, but may move to keymaster in the
-         * future */
-        case KM_TAG_UNLOCKED_DEVICE_REQUIRED:
-            break;
-
         case KM_TAG_BOOTLOADER_ONLY:
             return KM_ERROR_INVALID_KEY_BLOB;
         }
