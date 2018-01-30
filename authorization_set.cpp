@@ -501,6 +501,7 @@ void AuthorizationSet::Clear() {
     memset_s(indirect_data_, 0, indirect_data_size_);
     elems_size_ = 0;
     indirect_data_size_ = 0;
+    error_ = OK;
 }
 
 void AuthorizationSet::FreeData() {
