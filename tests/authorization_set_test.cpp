@@ -247,6 +247,15 @@ TEST(Deserialization, InvalidLengthField) {
     EXPECT_EQ(AuthorizationSet::MALFORMED_DATA, deserialized.is_valid());
 }
 
+TEST(Clear, ClearRecoversFromError) {
+    uint8_t buf[] = {0, 0, 0};
+    AuthorizationSet deserialized(buf, array_length(buf));
+    ASSERT_EQ(AuthorizationSet::MALFORMED_DATA, deserialized.is_valid());
+
+    deserialized.Clear();
+    ASSERT_EQ(AuthorizationSet::OK, deserialized.is_valid());
+}
+
 static uint32_t read_uint32(const uint8_t* buf) {
     uint32_t val;
     memcpy(&val, buf, sizeof(val));
