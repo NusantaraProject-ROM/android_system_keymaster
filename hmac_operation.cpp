@@ -135,7 +135,7 @@ HmacOperation::HmacOperation(keymaster_purpose_t purpose, const uint8_t* key_dat
         }
     }
 
-    HMAC_Init_ex(&ctx_, key_data, key_data_size, md, NULL /* engine */);
+    HMAC_Init_ex(&ctx_, key_data, key_data_size, md, nullptr /* engine */);
 }
 
 HmacOperation::~HmacOperation() {

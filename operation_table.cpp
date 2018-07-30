@@ -27,7 +27,7 @@ namespace keymaster {
 
 OperationTable::Entry::~Entry() {
     delete operation;
-    operation = NULL;
+    operation = nullptr;
     handle = 0;
 }
 
@@ -50,7 +50,7 @@ keymaster_error_t OperationTable::Add(Operation* operation, const KeymasterConte
     }
 
     for (size_t i = 0; i < table_size_; ++i) {
-        if (table_[i].operation == NULL) {
+        if (table_[i].operation == nullptr) {
             table_[i].operation = op.release();
             table_[i].handle = *op_handle;
             return KM_ERROR_OK;
@@ -61,16 +61,16 @@ keymaster_error_t OperationTable::Add(Operation* operation, const KeymasterConte
 
 Operation* OperationTable::Find(keymaster_operation_handle_t op_handle) {
     if (op_handle == 0)
-        return NULL;
+        return nullptr;
 
     if (!table_.get())
-        return NULL;
+        return nullptr;
 
     for (size_t i = 0; i < table_size_; ++i) {
         if (table_[i].handle == op_handle)
             return table_[i].operation;
     }
-    return NULL;
+    return nullptr;
 }
 
 bool OperationTable::Delete(keymaster_operation_handle_t op_handle) {
@@ -80,7 +80,7 @@ bool OperationTable::Delete(keymaster_operation_handle_t op_handle) {
     for (size_t i = 0; i < table_size_; ++i) {
         if (table_[i].handle == op_handle) {
             delete table_[i].operation;
-            table_[i].operation = NULL;
+            table_[i].operation = nullptr;
             table_[i].handle = 0;
             return true;
         }

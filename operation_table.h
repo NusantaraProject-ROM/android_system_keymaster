@@ -33,7 +33,7 @@ class OperationTable {
     struct Entry {
         Entry() {
             handle = 0;
-            operation = NULL;
+            operation = nullptr;
         };
         ~Entry();
         keymaster_operation_handle_t handle;

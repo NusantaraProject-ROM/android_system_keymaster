@@ -228,7 +228,7 @@ keymaster_error_t AesEvpOperation::Finish(const AuthorizationSet& additional_par
     if (!EVP_CipherFinal_ex(&ctx_, output->peek_write(), &output_written)) {
         if (tag_length_ > 0)
             return KM_ERROR_VERIFICATION_FAILED;
-        LOG_E("Error encrypting final block: %s", ERR_error_string(ERR_peek_last_error(), NULL));
+        LOG_E("Error encrypting final block: %s", ERR_error_string(ERR_peek_last_error(), nullptr));
         return TranslateLastOpenSslError();
     }
 
@@ -320,7 +320,7 @@ keymaster_error_t AesEvpOperation::InitializeCipher() {
         return KM_ERROR_UNSUPPORTED_BLOCK_MODE;
     }
 
-    if (!EVP_CipherInit_ex(&ctx_, cipher, NULL /* engine */, key_, iv_.get(), evp_encrypt_mode()))
+    if (!EVP_CipherInit_ex(&ctx_, cipher, nullptr /* engine */, key_, iv_.get(), evp_encrypt_mode()))
         return TranslateLastOpenSslError();
 
     switch (padding_) {

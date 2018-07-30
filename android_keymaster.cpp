@@ -84,7 +84,7 @@ typedef UniquePtr<ae_ctx, AE_CTX_Delete> Unique_ae_ctx;
 template <typename T>
 bool check_supported(const KeymasterContext& context, keymaster_algorithm_t algorithm,
                      SupportedResponse<T>* response) {
-    if (context.GetKeyFactory(algorithm) == NULL) {
+    if (context.GetKeyFactory(algorithm) == nullptr) {
         response->error = KM_ERROR_UNSUPPORTED_ALGORITHM;
         return false;
     }
@@ -92,7 +92,7 @@ bool check_supported(const KeymasterContext& context, keymaster_algorithm_t algo
 }
 
 void AndroidKeymaster::GetVersion(const GetVersionRequest&, GetVersionResponse* rsp) {
-    if (rsp == NULL)
+    if (rsp == nullptr)
         return;
 
     rsp->major_ver = MAJOR_VER;
@@ -103,7 +103,7 @@ void AndroidKeymaster::GetVersion(const GetVersionRequest&, GetVersionResponse* 
 
 void AndroidKeymaster::SupportedAlgorithms(const SupportedAlgorithmsRequest& /* request */,
                                            SupportedAlgorithmsResponse* response) {
-    if (response == NULL)
+    if (response == nullptr)
         return;
 
     response->error = KM_ERROR_OK;
@@ -123,7 +123,7 @@ void GetSupported(const KeymasterContext& context, keymaster_algorithm_t algorit
                   keymaster_purpose_t purpose,
                   const T* (OperationFactory::*get_supported_method)(size_t* count) const,
                   SupportedResponse<T>* response) {
-    if (response == NULL || !check_supported(context, algorithm, response))
+    if (response == nullptr || !check_supported(context, algorithm, response))
         return;
 
     const OperationFactory* factory = context.GetOperationFactory(algorithm, purpose);
@@ -157,7 +157,7 @@ void AndroidKeymaster::SupportedDigests(const SupportedDigestsRequest& request,
 
 void AndroidKeymaster::SupportedImportFormats(const SupportedImportFormatsRequest& request,
                                               SupportedImportFormatsResponse* response) {
-    if (response == NULL || !check_supported(*context_, request.algorithm, response))
+    if (response == nullptr || !check_supported(*context_, request.algorithm, response))
         return;
 
     size_t count;
@@ -168,7 +168,7 @@ void AndroidKeymaster::SupportedImportFormats(const SupportedImportFormatsReques
 
 void AndroidKeymaster::SupportedExportFormats(const SupportedExportFormatsRequest& request,
                                               SupportedExportFormatsResponse* response) {
-    if (response == NULL || !check_supported(*context_, request.algorithm, response))
+    if (response == nullptr || !check_supported(*context_, request.algorithm, response))
         return;
 
     size_t count;
@@ -185,11 +185,11 @@ void AndroidKeymaster::AddRngEntropy(const AddEntropyRequest& request,
 
 void AndroidKeymaster::GenerateKey(const GenerateKeyRequest& request,
                                    GenerateKeyResponse* response) {
-    if (response == NULL)
+    if (response == nullptr)
         return;
 
     keymaster_algorithm_t algorithm;
-    KeyFactory* factory = 0;
+    KeyFactory* factory = nullptr;
     UniquePtr<Key> key;
     if (!request.key_description.GetTagValue(TAG_ALGORITHM, &algorithm) ||
         !(factory = context_->GetKeyFactory(algorithm)))
@@ -207,7 +207,7 @@ void AndroidKeymaster::GenerateKey(const GenerateKeyRequest& request,
 
 void AndroidKeymaster::GetKeyCharacteristics(const GetKeyCharacteristicsRequest& request,
                                              GetKeyCharacteristicsResponse* response) {
-    if (response == NULL)
+    if (response == nullptr)
         return;
 
     KeymasterKeyBlob key_material;
@@ -236,7 +236,7 @@ static KeyFactory* GetKeyFactory(const KeymasterContext& context,
 
 void AndroidKeymaster::BeginOperation(const BeginOperationRequest& request,
                                       BeginOperationResponse* response) {
-    if (response == NULL)
+    if (response == nullptr)
         return;
     response->op_handle = 0;
 
@@ -261,7 +261,7 @@ void AndroidKeymaster::BeginOperation(const BeginOperationRequest& request,
 
     UniquePtr<Operation> operation(
         factory->CreateOperation(*key, request.additional_params, &response->error));
-    if (operation.get() == NULL)
+    if (operation.get() == nullptr)
         return;
 
     if (context_->enforcement_policy()) {
@@ -288,12 +288,12 @@ void AndroidKeymaster::BeginOperation(const BeginOperationRequest& request,
 
 void AndroidKeymaster::UpdateOperation(const UpdateOperationRequest& request,
                                        UpdateOperationResponse* response) {
-    if (response == NULL)
+    if (response == nullptr)
         return;
 
     response->error = KM_ERROR_INVALID_OPERATION_HANDLE;
     Operation* operation = operation_table_->Find(request.op_handle);
-    if (operation == NULL)
+    if (operation == nullptr)
         return;
 
     if (context_->enforcement_policy()) {
@@ -317,12 +317,12 @@ void AndroidKeymaster::UpdateOperation(const UpdateOperationRequest& request,
 
 void AndroidKeymaster::FinishOperation(const FinishOperationRequest& request,
                                        FinishOperationResponse* response) {
-    if (response == NULL)
+    if (response == nullptr)
         return;
 
     response->error = KM_ERROR_INVALID_OPERATION_HANDLE;
     Operation* operation = operation_table_->Find(request.op_handle);
-    if (operation == NULL)
+    if (operation == nullptr)
         return;
 
     if (context_->enforcement_policy()) {
@@ -356,7 +356,7 @@ void AndroidKeymaster::AbortOperation(const AbortOperationRequest& request,
 }
 
 void AndroidKeymaster::ExportKey(const ExportKeyRequest& request, ExportKeyResponse* response) {
-    if (response == NULL)
+    if (response == nullptr)
         return;
 
     AuthorizationSet hw_enforced;
@@ -425,11 +425,11 @@ void AndroidKeymaster::UpgradeKey(const UpgradeKeyRequest& request, UpgradeKeyRe
 }
 
 void AndroidKeymaster::ImportKey(const ImportKeyRequest& request, ImportKeyResponse* response) {
-    if (response == NULL)
+    if (response == nullptr)
         return;
 
     keymaster_algorithm_t algorithm;
-    KeyFactory* factory = 0;
+    KeyFactory* factory = nullptr;
     UniquePtr<Key> key;
     if (!request.key_description.GetTagValue(TAG_ALGORITHM, &algorithm) ||
         !(factory = context_->GetKeyFactory(algorithm)))
